@@ -1,0 +1,81 @@
+Daniel Griffin
+10/13/14
+Approximate time: 
+I did not colaborate on this assignmnet
+I did not look at the solution to this puzzle set
+
+
+Writer-priority readers-writers
+--------------------------------
+
+readSwitch = Lightswitch()
+writeSwitch = Lightswitch()
+mutex = Semaphore(1)
+noReaders = Semaphore(1)
+noWriters = Semaphore(1)
+
+Reader
+-------
+noReaders.wait()
+readSwitch.lock(noWriters)
+noReaders.signal()
+READ()
+readSwitch.unlock(noWriters)
+
+
+writer
+------
+writeSwitch.lock(noReaders)
+noWriters.wait()
+WRITE()
+noWriters.signal()
+writeSwitch.unlock(noReaders)
+
+This solution works as it uses a lightswitch to lock the opposing thread
+type out of the critical section. The distinction comes at which point the
+thread locks the other types' mutex. The writer locks it outside of the mutex
+so can lock readers even when it cannot reach the critical section. The readers
+however can only access the writers mutext inside of the critical section of
+the noReaders mutex.
+
+
+No Starve Mutex
+----------------
+room1 = room2 = 0
+mutex = Semaphore(1)
+t1 = Semaphore(1)
+t2 = Semaphore(0)
+
+
+All threads
+-----------
+t1.wait()
+    room1 += 1
+t1.signal()
+A()
+t1.wait()
+    if room1 == n:
+        t2.signal()
+        room1 = 0
+t1.signal()
+t2.wait()
+    room2 += 1
+t2.signal()
+B()
+t2.wait()
+    if room2 == n:
+        t1.signal()
+        room2 = 0
+t2.signal()
+t1.wait()
+
+This is the 2 turnstile soltion which prevents any thread from completing
+a second critical section until all threads have completed one critical
+section. This prevents starvation.
+
+
+
+
+
+
+

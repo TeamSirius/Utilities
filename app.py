@@ -39,6 +39,34 @@ def valid_location(data):
 def hello_world():
     return 'Hello World!'
 
+@app.route('/floors', methods=['GET'])
+def floors():
+     cur.execute("""SELECT building, floor from floor""");
+     res = []
+     for f in cur.fetchall():
+        res.append(f[0] + " " + str(f[1]))
+     return res
+
+@app.route('/aps/<building>', methods=['GET'])
+def aps_by_building():
+     #Expects building in form "building floor_number"
+     list_error = []
+     if not building:
+        return list_error
+     params = building.split()
+     if len(params) != 2:
+        return list_error
+     try:
+        floor_number = int(params[1]) + 0
+     except:
+        return list_error
+     cur.execute("""SELECT id from floor where floor=%s and building=%s""",[floor_number,params[0]])
+     floor_id = cur.fetchone()
+     if not floor_id:
+        return list_error
+     cur.execute("""SELECT verbose_name from location where floor_id=%s """,[floor_id])
+     return [x[0] for x in cur.fetchall()]
+
 @app.route('/location', methods=['GET', 'POST'])
 def location():
     if request.method == 'POST':

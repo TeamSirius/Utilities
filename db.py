@@ -1,7 +1,7 @@
 
 import pymysql
 #insert your sql information here
-conn = pymysql.connect(host='HOST', db='DATABASE', user='USER', passwd='PASS')
+conn = pymysql.connect(host='seniorindoorlocation.chopksxzy4yo.us-east-1.rds.amazonaws.com', db='sirius', user='wormtail', passwd='hamsandwich')
 conn.autocommit(True)
 
 cur = conn.cursor()
