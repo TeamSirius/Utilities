@@ -13,7 +13,7 @@ app = Flask(__name__)
 ERROR_RETURN = {"Error"}
 
 def all_in(L, dic):
-    """Given a list and a dictionary checks that 
+    """Given a list and a dictionary checks that
         all values in the list are keys in the dictionary"""
     for item in L:
         if item not in dic:
@@ -96,7 +96,7 @@ def location():
             for i in range(6):
                 json_return[keys[i]] = x[i]
             return json_return
- 
+
         except:
             return ERROR_RETURN
 
