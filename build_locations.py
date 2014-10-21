@@ -25,6 +25,31 @@ class Location(object):
     def save(self):
         print "({},{}): in {}. {} or {}\n ".format(self.x,self.y, self.file_name, self.name, self.verbose)
 
+class Rectangle(object):
+    def __init__(self,name, verbose, x1, y1, x2, y2, cid1,cid2, w):
+        #x1, y1 is the top left corner
+        #x2, y2 is the bottom right corner
+        #w is the Tkinter canvas 
+        self.name = name
+        self.verbose = verbose
+        self.cid1 = cid1
+        self.cid2 = cid2
+        self.x1 = x1
+        self.x2 = x2
+        self.y1 = y1
+        self.y2 = y2
+        self.id = w.create_rectangle(x1, y1, x2, y2, fill="blue")
+        self.canvas = w
+    def pop(self):
+        self.canvas.delete(self.cid2)
+        self.canvas.delete(self.id)
+        return (self.x1, self.y1, self.cid1)
+    def delete(self):
+        # deletes the rectangle from the canvas
+        self.canvas.delete(self.id)
+
+corners = []
+rectangles = []        
 
 def main(argv):
     window = Tkinter.Tk(className="Location Selector")
@@ -32,7 +57,6 @@ def main(argv):
     if len(argv) != 2:
         print "Usage: python build_locations filename"
         exit(1)        
-
     image = Image.open(argv[1])
     pixels = image.load()
     canvas = Tkinter.Canvas(window, width=image.size[0], height=image.size[1])
@@ -40,64 +64,38 @@ def main(argv):
     image_tk = ImageTk.PhotoImage(image)
     oncanvas = canvas.create_image(image.size[0]//2, image.size[1]//2, image=image_tk)
 
-    def callback(event):
-        r = 2 #point radius
+    def add_corner(event):
+        global corners
+        global rectangles
+        radius = 2 #point radius
+        cid = canvas.create_oval(event.x-radius, event.y-radius,
+             event.x + radius, event.y +radius, fill="blue")
+        corners.append( (event.x, event.y, cid) )
+        if len(corners) == 2:
+            name = raw_input("Short name: ")
+            verbose = raw_input("Verbose name: ")
+            rectangles.append( Rectangle(name,verbose,corners[0][0],corners[0][1],corners[1][0],corners[1][1],
+                corners[0][2], corners[1][2],
+                canvas)  )
+            corners = []
 
-        canvas.create_oval(event.x-r, event.y-r, event.x + r, event.y +r, fill="blue")
-        print "clicked at: ", event.x, event.y
-        name = raw_input("Short name: ")
-        verbose = raw_input("Verbose name: ")
-        print "Point created"
-        locations.append( Location( event.x, event.y, argv[1], name, verbose) )
-        
-        canvas.create_oval(event.x-r, event.y-r, event.x + r, event.y +r, fill="red")
+    def pop_corner(event):
+        global corners
+        global rectangles
+        if len(corners) != 1:
+            if len(rectangles) == 0:
+                return
+            else:
+                r = rectangles.pop(len(rectangles) - 1)
+                corners.append( r.pop() )
+        else:
+            c = corners[0]
+            canvas.delete(c[2])
+            corners = []
+    
 
-    # - Hunter: currently testing function to automatically create 4 points in a rectangle
-    #           when given two clicks. 
-    def draw_rectangle():
-        verbose = raw_input("Verbose name: ") # Will make a 4 new names based on this
-        short = raw_input("Short Name: ") 
-
-        corners = []
-        def record_click(event):
-            canvas.create_oval(event.x-r, event.y-r, event.x + r, event.y +r, fill="blue")
-            print "clicked at: ", event.x, event.y
-            corners.append( (event.x, event.y) )
-
-        print "Click the Top-Left Corner of the Rectangle"
-        canvas.bind("<Button-1>", record_click)
-        t_l = corners.pop() # top-left
-
-        print "Click the Bottom-Right Corner of the Rectangle"
-        canvas.bind("<Button-1>", record_click)
-        b_r = corners.pop() # bottom-right
-
-        # To make list accessing more readable (for coordinates)
-        X = 0
-        Y = 1
-        t_r = (b_r[X], t_l[Y])  # top-right
-        b_l = (t_l[X], b_r[Y])  # bottom-left
-
-        # Draws the point in red on the canvas and saves the location to 'locations'
-        def draw_and_save(point, location):
-            r = 2 # also the point radius
-            verbose_name = verbose + '_' + location[0]
-            short_name = short + '_' + location[1]
-
-            print "Point created: [x: ", str(point[X]), ', y: ', str(point[Y]), ', short: ', short_name, ', verbose: ', verbose_name, ']'
-            locations.append( Location( point[X], point[Y], argv[1], short_name, verbose_name) )
-            canvas.create_oval(point[X]-r, point[Y]-r, point[X]+r, point[Y]+r, fill="red")
-        
-        corner_coords = (t_l, t_r, b_l, b_r)
-        corner_names = [['Top-Left', 'TL'], ['Top-Right', 'TR'], ['Bottom-Left', 'BL'], ['Bottom-Right', 'BR']]
-        for i in range(4):
-            draw_and_save(corner_coords[i], corner_names[i])
-
-    rectangle = raw_input("Press '1' for a rectange.")
-    if int(rectange):
-        draw_rectangle
-    else:
-        canvas.bind("<Button-1>", callback)
+    canvas.bind("<Button-1>", add_corner)
+    canvas.bind("<Button-2>", pop_corner)
 
     Tkinter.mainloop()
     for loc in locations:
