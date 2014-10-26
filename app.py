@@ -11,7 +11,7 @@ import json
 app = Flask(__name__)
 
 # The error response json
-ERROR_RETURN = {"Error"}
+ERROR_RETURN = json.dumps({'error': "Error"})
 
 
 def all_in(L, dic):
