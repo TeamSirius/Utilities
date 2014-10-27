@@ -8,7 +8,7 @@
 import Tkinter
 from PIL import Image, ImageTk
 from sys import argv
-from db import cur
+from db import cur,SERVER_URL
 
 class Location(object):
     """A location corresponds to a pixel location on a map, the file name,
