@@ -67,16 +67,25 @@ def floor():
             floor_num = int(floor_num) + 0
         except:
             return ERROR_RETURN
-        cur.execute("""INSERT into floor (imagePath, floor, building) 
+        cur.execute("""INSERT into floor (imagePath, floor, building)
             VALUES, (%s,%s,%s)"""[add_path,floor_num,building_name])
         return {'floor_id':cur.lastrowid}
 
 @app.route('/floors', methods=['GET'])
 def floors():
+    print 'floors'
     cur.execute("""SELECT building, floor from floor""")
+    print 'executed'
     res = []
     for f in cur.fetchall():
-        res.append(f[0] + " " + str(f[1]))
+        # msg = "{} {}".format(f[0], f[1])
+        msg = {
+            'building': f[0],
+            'floor': f[1]
+        }
+        res.append(msg)
+        print f
+    print res
     return json.dumps(res)
 
 
@@ -93,13 +102,18 @@ def aps_by_building(building, floor):
         floor_number = int(params[1]) + 0
     except:
         return json.dumps(list_error)
+
     cur.execute("""SELECT id from floor where floor=%s and building=%s""",
                 [floor_number, params[0]])
     floor_id = cur.fetchone()
+
     if not floor_id:
         return json.dumps(list_error)
+    print floor_id[0]
+
     cur.execute("""SELECT verbose_name from location where floor_id=%s """,
-                [floor_id])
+                [floor_id[0]])
+
     return json.dumps([x[0] for x in cur.fetchall()])
 
 
@@ -139,6 +153,7 @@ def location():
 
         except:
             return ERROR_RETURN
+
 
 
 if __name__ == '__main__':
