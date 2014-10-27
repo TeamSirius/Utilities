@@ -8,6 +8,7 @@
 import Tkinter
 from PIL import Image, ImageTk
 from sys import argv
+from db import cur
 
 class Location(object):
     """A location corresponds to a pixel location on a map, the file name,
@@ -23,6 +24,9 @@ class Location(object):
         self.verbose = verbose
 
     def save(self):
+        """
+        POST AND WITH FLOOR ID AND D
+        """
         print "({},{}): in {}. {} or {}\n ".format(self.x,self.y, self.file_name, self.name, self.verbose)
 
 class Rectangle(object):
@@ -40,6 +44,21 @@ class Rectangle(object):
         self.y2 = y2
         self.id = w.create_rectangle(x1, y1, x2, y2, fill="blue")
         self.canvas = w
+    def build_locations(self):
+        XL = self.x1 if self.x1 < self.x2 else self.x2
+        XR = self.x2 if self.x1 < self.x2 else self.x1
+        YT = self.y1 if self.y1 < self.y2 else self.y2
+        YB = self.y2 if self.y1 < self.y2 else self.y1
+        fn = argv[1]
+        loc1 = Location(XL,YT,fn, self.name +"TL", self.verbose + "Top Left")
+        loc2 = Location(XR,YT,fn, self.name +"TR", self.verbose + "Top Right")
+        loc3 = Location(XR,YB,fn, self.name +"TR", self.verbose + "Bottom Right")
+        loc4 = Location(XL,YB,fn, self.name +"TR", self.verbose + "Bottom Left")
+        locations.append(loc1)
+        locations.append(loc2)
+        locations.append(loc3)
+        locations.append(loc4)
+
     def pop(self):
         self.canvas.delete(self.cid2)
         self.canvas.delete(self.id)
@@ -50,8 +69,12 @@ class Rectangle(object):
 
 corners = []
 rectangles = []        
+locations = []
 
 def main(argv):
+    """
+    POST AND GET FLOOR ID
+    """
     window = Tkinter.Tk(className="Location Selector")
     locations = []
     if len(argv) != 2:
@@ -98,6 +121,8 @@ def main(argv):
     canvas.bind("<Button-2>", pop_corner)
 
     Tkinter.mainloop()
+    for rect in rectangles:
+        rect.build_locations()
     for loc in locations:
         loc.save()
 
