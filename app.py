@@ -2,6 +2,7 @@
 # related to the indoor mapping project
 
 from flask import Flask
+from flask import request
 from db import cur
 # from db import conn
 import json
@@ -25,17 +26,17 @@ def all_in(L, dic):
 
 def valid_location(data):
     try:
-        x = int(data['x'])
+        # x = int(data['x'])
         # y = int(data['y'])
         # d = int(data['d'])
         fid = int(data['floor_id'])
-        x = cur.execute("""SELECT id from floor where id=%s""", [fid])
-        x = x.fetchone()
+        x = cur.execute("""SELECT id from floor where id=%s""", (fid,))
+        x = cur.fetchone()
         if x:
             return True
         else:
             return False
-    except:
+    except Exception:
         return False
 
 
@@ -81,13 +82,16 @@ def location():
     if request.method == 'POST':
         data = request.form
         keys = ['x', 'y', 'd', 'name', 'verbose', 'floor_id']
+        if not all_in(keys, data):
+            return ERROR_RETURN
         x = int(data['x'])
         y = int(data['y'])
         d = int(data['d'])
         fid = int(data['floor_id'])
         verb = data['verbose']
         name = data['name']
-        if all_in(keys, data) and valid_location(keys, data):
+        if all_in(keys, data) and valid_location(data):
+
             cur.execute("""INSERT INTO location (verbose_name,name,x,y,direction,floor_id)
                 VALUES (%s,%s,%s,%s,%s,%s);""", [verb, name, x, y, d, fid])
         else:
@@ -105,7 +109,7 @@ def location():
             json_return = {}
             for i in range(6):
                 json_return[keys[i]] = x[i]
-            return json_return
+            return json.dumps(json_return)
 
         except:
             return ERROR_RETURN
