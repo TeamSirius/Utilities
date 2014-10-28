@@ -27,13 +27,6 @@ class Location(object):
         self.verbose = verbose
 
     def save(self,floor_id):
-        """name TEXT,
-          verbose_name TEXT,
-          x INT,
-          y INT,
-          direction INT,
-          floor_id INT"""
-          ['x', 'y', 'd', 'name', 'verbose', 'floor_id']
         payload = {}
         payload['x'] = self.x
         payload['y'] = self.x
@@ -57,7 +50,11 @@ class Rectangle(object):
         self.x2 = x2
         self.y1 = y1
         self.y2 = y2
-        self.id = w.create_rectangle(x1, y1, x2, y2, fill="blue")
+        XL = self.x1 if self.x1 < self.x2 else self.x2
+        XR = self.x2 if self.x1 < self.x2 else self.x1
+        YT = self.y1 if self.y1 < self.y2 else self.y2
+        YB = self.y2 if self.y1 < self.y2 else self.y1
+        self.id = w.create_rectangle(XL, YT, XR, YB, fill="blue")
         self.canvas = w
     def build_locations(self,locs):
         XL = self.x1 if self.x1 < self.x2 else self.x2
@@ -65,14 +62,16 @@ class Rectangle(object):
         YT = self.y1 if self.y1 < self.y2 else self.y2
         YB = self.y2 if self.y1 < self.y2 else self.y1
         fn = argv[1]
-        loc1 = Location(XL,YT,fn, self.name +"TL", self.verbose + "Top Left")
-        loc2 = Location(XR,YT,fn, self.name +"TR", self.verbose + "Top Right")
-        loc3 = Location(XR,YB,fn, self.name +"TR", self.verbose + "Bottom Right")
-        loc4 = Location(XL,YB,fn, self.name +"TR", self.verbose + "Bottom Left")
+        loc1 = Location(XL,YT,fn, self.name +" TL", self.verbose + " Top Left")
+        loc2 = Location(XR,YT,fn, self.name +" TR", self.verbose + " Top Right")
+        loc3 = Location(XR,YB,fn, self.name +" BR", self.verbose + " Bottom Right")
+        loc4 = Location(XL,YB,fn, self.name +" BL", self.verbose + " Bottom Left")
+        loc5 = Location( (XL + XR) // 2, (YB + YT) // 2,fn, self.name +" CT", self.verbose + " Center")
         locs.append(loc1)
         locs.append(loc2)
         locs.append(loc3)
         locs.append(loc4)
+        locs.append(loc5)
 
     def pop(self):
         self.canvas.delete(self.cid2)
