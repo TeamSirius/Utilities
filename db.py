@@ -6,6 +6,7 @@ conn.autocommit(True)
 
 cur = conn.cursor()
 
+SERVER_URL = "http://mapbuilder.herokuapp.com/"
 
 def create_location():
     cur.execute("""DROP TABLE if exists location;""")

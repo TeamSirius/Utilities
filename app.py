@@ -44,6 +44,32 @@ def valid_location(data):
 def hello_world():
     return 'Hello World!'
 
+@app.route('/floor', methods=['GET','POST'])
+def floor():
+    if request.method == 'GET':
+        requested_path = request.args.get('path')
+        if not requested_path:
+            return ERROR_RETURN
+        cur.execute("""SELECT id from floor where imagePath=%s""",
+                    [requested_path])
+        floor_id = cur.fetchone()
+        if not floor_id:
+            return ERROR_RETURN
+        else:
+            return {'floor_id':floor_id}
+    else:
+        add_path = request.args.get('path')
+        floor_num = request.args.get('floor_number')
+        building_name = request.args.get('building')
+        if not add_path or not floor_num or not building_name:
+            return ERROR_RETURN
+        try:
+            floor_num = int(floor_num) + 0
+        except:
+            return ERROR_RETURN
+        cur.execute("""INSERT into floor (imagePath, floor, building) 
+            VALUES, (%s,%s,%s)"""[add_path,floor_num,building_name])
+        return {'floor_id':cur.lastrowid}
 
 @app.route('/floors', methods=['GET'])
 def floors():
