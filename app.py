@@ -13,7 +13,7 @@ app = Flask(__name__)
 
 # The error response json
 ERROR_RETURN = json.dumps({'error': "Error"})
-
+SUCCESS_RETURN = json.dumps({'success': "Success"})
 
 def all_in(L, dic):
     """Given a list and a dictionary checks that
@@ -39,6 +39,24 @@ def valid_location(data):
     except Exception:
         return False
 
+@app.route('/APS', methods=['POST'])
+def APS():
+    #Takes a posted parameter of format:
+    #{"lid":location_id, "APS":[ (MAC, STRENGTH),... ]}
+    lid = -1
+    try:
+        data = request.get_json()
+        data["lid"]
+        data["APS"]
+        lid = cur.execute("""SELECT id from location where id=%s""", (int(data['lid']),))
+        if not lid:
+            raise "ERROR"
+        for (MAC, strength) in data["APS"]:
+            cur.execute("""INSERT into accesspoint (MAC, strength, location_id, recorded
+                VALUES ( %s, %s, %s, NOW() )""", (MAC,strength,lid,))
+    except:
+        return ERROR_RETURN
+    return SUCCESS_RETURN
 
 @app.route('/')
 def hello_world():
