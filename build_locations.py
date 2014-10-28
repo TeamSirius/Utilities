@@ -13,8 +13,6 @@ import requests
 import json
 
 
-
-
 class Location(object):
     """A location corresponds to a pixel location on a map, the file name,
         a short name and a verbose name. It allows the functionality of
@@ -29,7 +27,22 @@ class Location(object):
         self.verbose = verbose
 
     def save(self,floor_id):
-        print floor_id
+        """name TEXT,
+          verbose_name TEXT,
+          x INT,
+          y INT,
+          direction INT,
+          floor_id INT"""
+          ['x', 'y', 'd', 'name', 'verbose', 'floor_id']
+        payload = {}
+        payload['x'] = self.x
+        payload['y'] = self.x
+        payload['name'] = self.name
+        payload['verbose'] = self.verbose
+        payload['floor_id'] = floor_id
+        for i in range(4):
+            payload['d'] = i * 90
+            r = requests.post(SERVER_URL + "location", params=payload)
 
 class Rectangle(object):
     def __init__(self,name, verbose, x1, y1, x2, y2, cid1,cid2, w):
