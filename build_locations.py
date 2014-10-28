@@ -7,8 +7,13 @@
 
 import Tkinter
 from PIL import Image, ImageTk
-from sys import argv
+from sys import argv,exit
 from db import cur,SERVER_URL
+import requests
+import json
+
+
+
 
 class Location(object):
     """A location corresponds to a pixel location on a map, the file name,
@@ -23,11 +28,8 @@ class Location(object):
         self.name = name
         self.verbose = verbose
 
-    def save(self):
-        """
-        POST AND WITH FLOOR ID AND D
-        """
-        print "({},{}): in {}. {} or {}\n ".format(self.x,self.y, self.file_name, self.name, self.verbose)
+    def save(self,floor_id):
+        print floor_id
 
 class Rectangle(object):
     def __init__(self,name, verbose, x1, y1, x2, y2, cid1,cid2, w):
@@ -44,7 +46,7 @@ class Rectangle(object):
         self.y2 = y2
         self.id = w.create_rectangle(x1, y1, x2, y2, fill="blue")
         self.canvas = w
-    def build_locations(self):
+    def build_locations(self,locs):
         XL = self.x1 if self.x1 < self.x2 else self.x2
         XR = self.x2 if self.x1 < self.x2 else self.x1
         YT = self.y1 if self.y1 < self.y2 else self.y2
@@ -54,10 +56,10 @@ class Rectangle(object):
         loc2 = Location(XR,YT,fn, self.name +"TR", self.verbose + "Top Right")
         loc3 = Location(XR,YB,fn, self.name +"TR", self.verbose + "Bottom Right")
         loc4 = Location(XL,YB,fn, self.name +"TR", self.verbose + "Bottom Left")
-        locations.append(loc1)
-        locations.append(loc2)
-        locations.append(loc3)
-        locations.append(loc4)
+        locs.append(loc1)
+        locs.append(loc2)
+        locs.append(loc3)
+        locs.append(loc4)
 
     def pop(self):
         self.canvas.delete(self.cid2)
@@ -72,15 +74,33 @@ rectangles = []
 locations = []
 
 def main(argv):
-    """
-    POST AND GET FLOOR ID
-    """
     window = Tkinter.Tk(className="Location Selector")
     locations = []
     if len(argv) != 2:
         print "Usage: python build_locations filename"
         exit(1)        
     image = Image.open(argv[1])
+    payload = {'path': argv[1]}
+    try:
+        r = requests.get(SERVER_URL + "floor", params=payload)
+        found_fid = False
+        fid = 1
+        if r:
+            json_r = json.loads(r)
+            if 'error' not in json_r:
+                found_fid = True
+                fid = json_r['floor_id']
+        if not found_fid:
+            payload['building'] = raw_input("Building: ")
+            payload['floor_number'] = int(raw_input("floor_number: "))
+            r = requests.post(SERVER_URL + "floor", params=payload)
+            json_r = json.loads(r)
+            if 'error' in json_r:
+                raise "Server Error"
+            fid = int(json_r['floor_id'])
+    except:
+        exit("Error finding floor id")
+
     pixels = image.load()
     canvas = Tkinter.Canvas(window, width=image.size[0], height=image.size[1])
     canvas.pack()
@@ -122,9 +142,9 @@ def main(argv):
 
     Tkinter.mainloop()
     for rect in rectangles:
-        rect.build_locations()
+        rect.build_locations(locations)
     for loc in locations:
-        loc.save()
+        loc.save(fid)
 
 
 
