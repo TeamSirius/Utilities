@@ -94,25 +94,25 @@ def main(argv):
         exit(1)        
     image = Image.open(argv[1])
     payload = {'path': argv[1]}
-    try:
-        r = requests.get(SERVER_URL + "floor", params=payload)
-        found_fid = False
-        fid = 1
-        if r: 
-            json_r = r.json()
-            if 'error' not in json_r:
-                found_fid = True
-                fid = int(json_r['floor_id'])
-        if not found_fid:
-            payload['building'] = raw_input("Building: ")
-            payload['floor_number'] = int(raw_input("floor_number: "))
-            r = requests.post(SERVER_URL + "floor", params=payload)
-            json_r = r.json()
-            if 'error' in json_r:
-                raise "Server Error"
+    #try:
+    r = requests.get(SERVER_URL + "floor", params=payload)
+    found_fid = False
+    fid = 1
+    if r:
+        json_r = r.json()
+        if 'error' not in json_r:
+            found_fid = True
             fid = int(json_r['floor_id'])
-    except:
-        exit("Error finding floor id")
+    if not found_fid:
+        payload['building'] = raw_input("Building: ")
+        payload['floor_number'] = int(raw_input("floor_number: "))
+        r = requests.post(SERVER_URL + "floor", data=json.dumps(payload))
+        json_r = r.json()        
+        if 'error' in json_r:
+            raise "Server Error"
+        fid = int(json_r['floor_id'])
+    # except:
+    #    exit("Error finding floor id")
 
     pixels = image.load()
     canvas = Tkinter.Canvas(window, width=image.size[0], height=image.size[1])

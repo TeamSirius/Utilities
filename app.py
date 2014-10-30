@@ -39,14 +39,10 @@ def valid_location(data):
     except Exception:
         return False
 
-@app.route('/APS', methods=['POST'])
-def APS():
-    #Takes a posted parameter of format:
-    #{"lid":location_id, "APS":[ (MAC, STRENGTH),... ]}
-    lid = -1
-    try:
-        data = request.get_json()
-        lid = cur.execute("""SELECT id from location where id=%s""", (int(data['lid']),))
+        data = request.get_json(force=True)
+        data["lid"]
+        data["APS"]
+        lid = cur.execute("""SELECT id from location where id=%s""", [ int(data['lid']) ] )
         if not lid:
             raise "ERROR"
         for item in data["APS"]:
@@ -74,18 +70,17 @@ def floor():
         else:
             return {'floor_id':floor_id}
     else:
-        add_path = request.args.get('path')
-        floor_num = request.args.get('floor_number')
-        building_name = request.args.get('building')
-        if not add_path or not floor_num or not building_name:
-            return ERROR_RETURN
+        r = request.get_json(force=True)
+        add_path = r['path']
+        floor_num = r['floor_number']
+        building_name = r['building']
         try:
-            floor_num = int(floor_num) + 0
+            floor_num = int(floor_num)
         except:
             return ERROR_RETURN
         cur.execute("""INSERT into floor (imagePath, floor, building)
-            VALUES, (%s,%s,%s)"""[add_path,floor_num,building_name])
-        return {'floor_id':cur.lastrowid}
+            VALUES (%s,%s,%s)""",[add_path,floor_num,building_name])
+        return json.dumps({'floor_id':cur.lastrowid})
 
 @app.route('/floors', methods=['GET'])
 def floors():
