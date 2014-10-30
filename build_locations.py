@@ -36,7 +36,6 @@ class Location(object):
         for i in range(4):
             payload['d'] = i * 90
             r = requests.post(SERVER_URL + "location", data=json.dumps(payload))
-            print r.text
 
 class Rectangle(object):
     def __init__(self,name, verbose, x1, y1, x2, y2, cid1,cid2, w):
