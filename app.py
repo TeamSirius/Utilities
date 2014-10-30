@@ -45,7 +45,7 @@ def APS():
     lid = -1
     try:
         data = request.get_json(force=True)
-        lid = int(item['lid'])
+        lid = int(data['lid'])
         for item in data["APS"]:
             cur.execute("""INSERT into accesspoint (MAC, strength, location_id, recorded)
                 VALUES ( %s, %s, %s, NOW() )""", [item['MAC'], float(item['strength']),lid])
