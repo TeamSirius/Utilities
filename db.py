@@ -5,8 +5,11 @@ conn = pymysql.connect(host='seniorindoorlocation.chopksxzy4yo.us-east-1.rds.ama
 conn.autocommit(True)
 
 cur = conn.cursor()
+DEBUG = False
 
 SERVER_URL = "http://mapbuilder.herokuapp.com/"
+if DEBUG:
+  SERVER_URL = "http://localhost:5000/"
 
 def create_location():
     cur.execute("""DROP TABLE if exists location;""")

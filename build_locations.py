@@ -8,7 +8,7 @@
 import Tkinter
 from PIL import Image, ImageTk
 from sys import argv,exit
-from db import cur,SERVER_URL
+from db import cur,SERVER_URL,DEBUG
 import requests
 import json
 
@@ -98,6 +98,8 @@ def main(argv):
     r = requests.get(SERVER_URL + "floor", params=payload)
     found_fid = False
     fid = 1
+    if DEBUG:
+        print r.text
     if r:
         json_r = r.json()
         if 'error' not in json_r:

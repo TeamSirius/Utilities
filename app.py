@@ -3,7 +3,7 @@
 
 from flask import Flask
 from flask import request
-from db import cur
+from db import cur, DEBUG
 # from db import conn
 import json
 
@@ -66,18 +66,17 @@ def hello_world():
 @app.route('/floor', methods=['GET','POST'])
 def floor():
     if request.method == 'GET':
-        ######## FIX THIS SECTION ###########
         requested_path = request.args.get('path')
         if not requested_path:
             return ERROR_RETURN
+        print requested_path
         cur.execute("""SELECT id from floor where imagePath=%s""",
                     [requested_path])
         floor_id = cur.fetchone()
         if not floor_id:
             return ERROR_RETURN
         else:
-            return {'floor_id':floor_id}
-        ######## FIX THIS SECTION ###########
+            return json.dumps({'floor_id':floor_id[0]})
     else:
         r = request.get_json(force=True)
         add_path = r['path']
