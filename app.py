@@ -23,7 +23,6 @@ def all_in(L, dic):
             return False
     return True
 
-
 def valid_location(data):
     try:
         # x = int(data['x'])
