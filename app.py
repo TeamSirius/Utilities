@@ -129,10 +129,17 @@ def aps_by_building(building, floor):
         return json.dumps(list_error)
     print floor_id[0]
 
-    cur.execute("""SELECT verbose_name from location where floor_id=%s """,
+    cur.execute("""SELECT id,verbose_name from location where floor_id=%s """,
                 [floor_id[0]])
 
-    return json.dumps([x[0] for x in cur.fetchall()])
+    things = []
+    for x in cur.fetchall():
+        things.append({
+            'id': x[0],
+            'verbose_name': x[1]
+        })
+
+    return json.dumps(things)
 
 
 @app.route('/location', methods=['GET', 'POST'])
