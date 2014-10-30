@@ -79,6 +79,8 @@ class Rectangle(object):
         return (self.x1, self.y1, self.cid1)
     def delete(self):
         # deletes the rectangle from the canvas
+        self.canvas.delete(self.cid2)
+        self.canvas.delete(self.cid1)
         self.canvas.delete(self.id)
 
 corners = []
@@ -87,7 +89,6 @@ locations = []
 
 def main(argv):
     window = Tkinter.Tk(className="Location Selector")
-    locations = []
     if len(argv) != 2:
         print "Usage: python build_locations filename"
         exit(1)        
@@ -101,12 +102,12 @@ def main(argv):
             json_r = r.json()
             if 'error' not in json_r:
                 found_fid = True
-                fid = json_r['floor_id']
+                fid = int(json_r['floor_id'])
         if not found_fid:
             payload['building'] = raw_input("Building: ")
             payload['floor_number'] = int(raw_input("floor_number: "))
             r = requests.post(SERVER_URL + "floor", params=payload)
-            json_r = json.loads(r)
+            json_r = r.json()
             if 'error' in json_r:
                 raise "Server Error"
             fid = int(json_r['floor_id'])
@@ -122,6 +123,7 @@ def main(argv):
     def add_corner(event):
         global corners
         global rectangles
+        global locations
         radius = 2 #point radius
         cid = canvas.create_oval(event.x-radius, event.y-radius,
              event.x + radius, event.y +radius, fill="blue")
@@ -137,6 +139,7 @@ def main(argv):
     def pop_corner(event):
         global corners
         global rectangles
+        global locations
         if len(corners) != 1:
             if len(rectangles) == 0:
                 return
