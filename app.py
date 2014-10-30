@@ -51,9 +51,11 @@ def APS():
         lid = cur.execute("""SELECT id from location where id=%s""", (int(data['lid']),))
         if not lid:
             raise "ERROR"
-        for (MAC, strength) in data["APS"]:
+        item['mac']
+        item['strength']
+        for item in data["APS"]:
             cur.execute("""INSERT into accesspoint (MAC, strength, location_id, recorded
-                VALUES ( %s, %s, %s, NOW() )""", (MAC,strength,lid,))
+                VALUES ( %s, %s, %s, NOW() )""", (item['MAC'], item['strength'],lid,))
     except:
         return ERROR_RETURN
     return SUCCESS_RETURN
