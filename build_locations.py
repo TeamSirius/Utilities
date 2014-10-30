@@ -97,8 +97,8 @@ def main(argv):
         r = requests.get(SERVER_URL + "floor", params=payload)
         found_fid = False
         fid = 1
-        if r:
-            json_r = json.loads(r)
+        if r: 
+            json_r = r.json()
             if 'error' not in json_r:
                 found_fid = True
                 fid = json_r['floor_id']
