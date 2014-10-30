@@ -39,12 +39,20 @@ def valid_location(data):
     except Exception:
         return False
 
+@app.route('/APS', methods=['POST'])
+def APS():
+    #Takes a posted parameter of format:
+    #{"lid":location_id, "APS":[ (MAC, STRENGTH),... ]}
+    lid = -1
+    try:
         data = request.get_json(force=True)
         data["lid"]
         data["APS"]
         lid = cur.execute("""SELECT id from location where id=%s""", [ int(data['lid']) ] )
         if not lid:
             raise "ERROR"
+        item['mac']
+        item['strength']
         for item in data["APS"]:
             cur.execute("""INSERT into accesspoint (MAC, strength, location_id, recorded
                 VALUES ( %s, %s, %s, NOW() )""", (item['MAC'], item['strength'],lid,))
