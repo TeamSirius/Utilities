@@ -142,7 +142,7 @@ def aps_by_building(building, floor):
 @app.route('/location', methods=['GET', 'POST'])
 def location():
     if request.method == 'POST':
-        data = request.form
+        data = request.get_json(force=True)
         keys = ['x', 'y', 'd', 'name', 'verbose', 'floor_id']
         if not all_in(keys, data):
             return ERROR_RETURN
@@ -153,9 +153,9 @@ def location():
         verb = data['verbose']
         name = data['name']
         if all_in(keys, data) and valid_location(data):
-
             cur.execute("""INSERT INTO location (verbose_name,name,x,y,direction,floor_id)
                 VALUES (%s,%s,%s,%s,%s,%s);""", [verb, name, x, y, d, fid])
+            return SUCCESS_RETURN
         else:
             return ERROR_RETURN
     else:
