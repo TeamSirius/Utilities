@@ -54,8 +54,8 @@ def APS():
         item['mac']
         item['strength']
         for item in data["APS"]:
-            cur.execute("""INSERT into accesspoint (MAC, strength, location_id, recorded
-                VALUES ( %s, %s, %s, NOW() )""", (item['MAC'], item['strength'],lid,))
+            cur.execute("""INSERT into accesspoint (MAC, strength, location_id, recorded)
+                VALUES ( %s, %s, %s, NOW() )""", [item['MAC'], item['strength'],lid])
     except:
         return ERROR_RETURN
     return SUCCESS_RETURN
@@ -67,6 +67,7 @@ def hello_world():
 @app.route('/floor', methods=['GET','POST'])
 def floor():
     if request.method == 'GET':
+        ######## FIX THIS SECTION ###########
         requested_path = request.args.get('path')
         if not requested_path:
             return ERROR_RETURN
@@ -77,6 +78,7 @@ def floor():
             return ERROR_RETURN
         else:
             return {'floor_id':floor_id}
+        ######## FIX THIS SECTION ###########
     else:
         r = request.get_json(force=True)
         add_path = r['path']
