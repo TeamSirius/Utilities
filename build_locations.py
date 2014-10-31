@@ -41,7 +41,7 @@ class Rectangle(object):
     def __init__(self,name, verbose, x1, y1, x2, y2, cid1,cid2, w):
         #x1, y1 is the top left corner
         #x2, y2 is the bottom right corner
-        #w is the Tkinter canvas 
+        #w is the Tkinter canvas
         self.name = name
         self.verbose = verbose
         self.cid1 = cid1
@@ -84,14 +84,14 @@ class Rectangle(object):
         self.canvas.delete(self.id)
 
 corners = []
-rectangles = []        
+rectangles = []
 locations = []
 
 def main(argv):
     window = Tkinter.Tk(className="Location Selector")
     if len(argv) != 2:
         print "Usage: python build_locations filename"
-        exit(1)        
+        exit(1)
     image = Image.open(argv[1])
     payload = {'path': argv[1]}
     try:
@@ -109,7 +109,7 @@ def main(argv):
             payload['building'] = raw_input("Building: ")
             payload['floor_number'] = int(raw_input("floor_number: "))
             r = requests.post(SERVER_URL + "floor", data=json.dumps(payload))
-            json_r = r.json()        
+            json_r = r.json()
             if 'error' in json_r:
                 raise "Server Error"
             fid = int(json_r['floor_id'])
@@ -152,7 +152,7 @@ def main(argv):
             c = corners[0]
             canvas.delete(c[2])
             corners = []
-    
+
 
     canvas.bind("<Button-1>", add_corner)
     canvas.bind("<Button-2>", pop_corner)
