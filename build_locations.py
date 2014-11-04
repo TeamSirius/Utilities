@@ -29,7 +29,7 @@ class Location(object):
     def save(self,floor_id):
         payload = {}
         payload['x'] = self.x
-        payload['y'] = self.x
+        payload['y'] = self.y
         payload['name'] = self.name
         payload['verbose'] = self.verbose
         payload['floor_id'] = floor_id
