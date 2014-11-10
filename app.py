@@ -47,8 +47,8 @@ def APS():
         data = request.get_json(force=True)
         lid = int(data['lid'])
         for item in data["APS"]:
-            cur.execute("""INSERT into accesspoint (MAC, strength, location_id, recorded)
-                VALUES ( %s, %s, %s, NOW() )""", [item['MAC'], float(item['strength']),lid])
+            cur.execute("""INSERT into accesspoint (MAC, strength, std_dev,location_id, recorded)
+                VALUES ( %s, %s, %s, NOW() )""", [item['MAC'], float(item['strength']),float(item['std']),lid])
     except:
         return ERROR_RETURN
     return SUCCESS_RETURN
