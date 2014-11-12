@@ -1,33 +1,27 @@
 #   This Script:
 #   - Currently:
-#       - receives a point [which = (50,50) for testing]
+#       - Receive Point (x,y) from Database
 #       - Draws that point on Halligan Floor 2
 #   - Future:
-#       - Receive Point (x,y) from Database
 #       - Receive Floor Plan Name from Database
 #       - Draw Point on Floor Plan File
 
-# import Tkinter
-import os
 from PIL import Image, ImageDraw
 from db import cur
-import json
+import json, os
 
-test_coord = (50,50)
 halligan_two = os.path.join(os.getcwd(), 'Halligan_2.png')
 
 def main():
-    radius = 5 # point radius
-    x,y = test_coord
     cur.execute("""SELECT x,y from demhoes order by id desc limit 1 """)
     row = cur.fetchone()
     if row != None:
-        (x,y) = row
-        x = int(float(x))
-        y = int(float(y))
-    print x, y
+        x = int(float(row[0]))
+        y = int(float(row[1]))
+
     image = Image.open(halligan_two)
     
+    radius = 5 # point radius
     draw_image = ImageDraw.Draw(image)
     draw_image.ellipse((x-radius,y-radius,x+radius,y+radius), fill='blue',outline='red')
     image.show()
