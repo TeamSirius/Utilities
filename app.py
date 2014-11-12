@@ -46,9 +46,24 @@ def APS():
     try:
         data = request.get_json(force=True)
         lid = int(data['lid'])
-        for item in data["APS"]:
-            cur.execute("""INSERT into accesspoint (MAC, strength, location_id, recorded)
-                VALUES ( %s, %s, %s, NOW() )""", [item['MAC'], float(item['strength']),lid])
+        if lid == -1:
+            from kNN import demo
+            knnData = {}
+            knnData['direction'] = 0
+            knnData['x'] = 0
+            knnData['y'] = 0
+            knnData['floor_id'] = 2
+            knnData['macs'] = [item['MAC'] for item in data["APS"]]
+            knnData['rss'] = [float(item['strength']) for item in data["APS"]]
+            knnData = [knnData]
+            (x, y) = demo(knnData)
+            cur.execute("""INSERT into demhoes (x,y, recorded)
+                    VALUES ( %s, %s, NOW() )""", [x,y])
+            return json.dumps({'success': {"x" : x, "y" : y}})
+        else:        
+            for item in data["APS"]:
+                cur.execute("""INSERT into accesspoint (MAC, strength, location_id, recorded)
+                    VALUES ( %s, %s, %s, NOW() )""", [item['MAC'], float(item['strength']),lid])
     except:
         return ERROR_RETURN
     return SUCCESS_RETURN

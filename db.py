@@ -46,6 +46,17 @@ def create_floor():
       building TEXT
     );""")
 
+def create_demhoes():
+    cur.execute("""DROP TABLE if exists demhoes;""")
+    cur.execute("""CREATE TABLE demhoes (
+      id INT NOT NULL AUTO_INCREMENT,
+      PRIMARY KEY(id),
+      x TEXT,
+      y INT,
+      recorded DATETIME
+    );""")
+
+
 def create_all_tables():
     create_location()
     create_AP()
