@@ -9,10 +9,15 @@ q = """select floor_id,accesspoint.location_id,x,y,direction, GROUP_CONCAT(MAC) 
  join location on location.id=accesspoint.location_id
   group by accesspoint.location_id,x,y,direction"""
 
-def dump():
-    fp = open('access_points.json', 'w')
+q2 = """select floor_id,accesspoint.location_id,x,y,direction, GROUP_CONCAT(MAC) as MAC_list,GROUP_CONCAT(strength) as strength_list from accesspoint
+ join location on location.id=accesspoint.location_id WHERE location.id = 61
+  group by accesspoint.location_id,x,y,direction"""
 
-    cur.execute(q)
+
+def dump():
+    fp = open('access_points_test.json', 'w')
+
+    cur.execute(q2)
     access_points = cur.fetchall()
     res = []
     for f in access_points:
@@ -28,7 +33,7 @@ def dump():
         }
         print json.dumps(msg)
         res.append(msg)
-    print json.dump(res, fp)
+    json.dump(res, fp)
     fp.close()
 
 
