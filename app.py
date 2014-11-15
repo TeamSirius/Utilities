@@ -64,7 +64,7 @@ def APS():
             for item in data["APS"]:
                 cur.execute("""INSERT into accesspoint (MAC, strength, location_id, std_dev, recorded)
                     VALUES ( %s, %s, %s,%s, NOW() )""",
-                    [item['MAC'], float(item['strength']),lid], float(item['std'])) #UTC TIME
+                    [item['MAC'], float(item['strength']),lid, float(item['std'])] ) #UTC TIME
     except:
         return ERROR_RETURN
     return SUCCESS_RETURN
