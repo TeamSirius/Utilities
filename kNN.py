@@ -21,6 +21,7 @@ class AccessPoint(object):
         self.datetime = ap[3]
 
 # Location Class
+# TODO: Look into storing previous distance calculations
 class Location(object):
     def __init__(self, loc):
         self.x = loc[0]
@@ -85,6 +86,7 @@ def weighted_avg(tuples):
 def kNN(data, aps, k = 7):
     k = min(k, len(data))
     data = sorted(data, key=lambda x: x.get_distance(aps))
+    #TODO: Reconsider avg vs. mode
     d = Counter([loc.floor_id for loc in data[:k]])
     floor = d.most_common(1)[0][0]
     x = weighted_avg([(loc.x, loc.get_distance(aps)) for loc in data[:k]])
@@ -151,36 +153,15 @@ def get_data_locations(data):
         for i in range(len(cur_macs)):
             cur_aps.append((cur_macs[i], cur_rss[i], 0, 0))
         locations.append((d["x"], d["y"], d["direction"], d["floor_id"], cur_aps))
+        # TODO: Maybe take away list comprehension thing
     return [Location(i) for i in locations]
 
 
-# Returns a list of Locations and an AccessPoint dictionary
-# Note: Right now, the data is hard-coded. It shouldn't be.
-def get_data2():
-    # Change this
-    data = [(1,1,3,0,[(1,-66,1,1), (2, -60, 2, 2)]),
-            (2,2,3,0,[(1,-55,1,1), (3, -45, 2, 2), (4, -55, 2, 2)]),
-            (3,3,3,0,[(1,-80,1,1), (4, -70, 2, 2)]),
-            (4,4,3,0,[(1,-55,1,1), (2, -85, 2, 2), (4, -55, 2, 2)]),
-            (5,5,3,0,[(2,-80,1,1), (4, -70, 2, 2)]),
-            (6,6,3,0,[(2,-55,1,1), (3, -55, 2, 2), (4, -55, 2, 2)]),
-            (7,7,3,0,[(3,-60,1,1), (4, -70, 2, 2)]),
-            (8,8,5,0,[(4,-50,3,3)])]
-
-    new_aps = [(3,-55,2,2), (4,-75,4,1)]
-
-    formatted_data = [Location(i) for i in data]
-    formatted_aps = {}
-    for ap in new_aps:
-        formatted_aps[ap[0]] = AccessPoint(ap)
-    return (formatted_data, formatted_aps)
-
 # Gets and normalizes training Location data and current AccessPoint strengths
 # Runs kNN algorithm to predict current location and floor
-def demo(cur_data):
+def demo(cur_aps):
+    #TODO: Change names
     data = get_locations("access_points.json")
-    cur_loc = get_data_locations(cur_data)
-    cur_aps = cur_loc[0].aps
     normalize(data, cur_aps)
     (x, y, floor) = kNN(data, cur_aps)
     return (x,y)

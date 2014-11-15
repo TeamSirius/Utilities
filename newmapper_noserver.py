@@ -142,7 +142,7 @@ def main():
                 print '     Name: ', point.name, 'Verbose: ', point.verbose
                 draw_point(point.x, point.y, 'red')
 
-            command = raw_input("Confirm Points? [Y/N]")
+            command = raw_input("Confirm Points? [Y/N]: ")
             if command == 'Y':
                 locations = locations + possible_locs
                 points = []
