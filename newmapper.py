@@ -262,11 +262,10 @@ def main(argv, debug):
 
     window.mainloop()
     command = raw_input("Save Points? [Y/N] ")
-    if not debug:
-        if command == 'Y':
-            for loc in locations:
-                loc.save(fid)
+    if command == 'Y':
+        for loc in locations:
+            loc.save(fid)
 
 if __name__ == '__main__':
-    debug = True
+    debug = False
     main(argv, debug)
