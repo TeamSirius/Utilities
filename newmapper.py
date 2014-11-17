@@ -236,6 +236,7 @@ def main(argv, debug):
         global points
         global delete_list
 
+        canvas.unbind("<Button-1>")
         name = raw_input("Short name: ")
         verbose = raw_input("Verbose name: ")
 
@@ -256,6 +257,7 @@ def main(argv, debug):
         else:
             reset()
         log_btn.pack_forget()
+        canvas.bind("<Button-1>", add_point)
 
     point_btn = Tkinter.Button(frame, text="Point",command=point_mode)
     line_btn = Tkinter.Button(frame, text="Line",command=line_mode)
