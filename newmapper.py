@@ -1,11 +1,26 @@
-import Tkinter
+# This Script:
+#   - supports building mapping by mode
+# Valid Modes:
+#   - Point
+#   - Line (horizontal or vertical)
+#       - asks for the number of points in the line
+#       - Naming Schema:
+#           - Vertical Lines:
+#               - Top-Bottom = A-Z
+#           - Horizontal Lines:
+#               - Left-Right = A-Z
+#   - Rectangle
+#   - Grid
+#       - Name Schema:
+#           - Columns: 0-N
+#           - Rows: A-Z
+
+# Changing Modes before logging deletes unlogged points
+
+import Tkinter, os, math, requests, json
 from PIL import Image, ImageTk
 from sys import argv,exit
 from db import cur,SERVER_URL,DEBUG
-import os, math
-import requests, json
-
-# halligan_two = os.path.join(os.getcwd(), 'Halligan_2.png')
 
 class Location(object):
     def __init__(self, x, y, name, verbose):
@@ -25,10 +40,16 @@ class Location(object):
             payload['d'] = i * 90
             r = requests.post(SERVER_URL + "location", data=json.dumps(payload))
 
+class Point(object):
+    def __init__(self, point_list, name, verbose):
+        x, y = point_list[0]
+        self.locs = []
+        self.locs.append(Location(x, y, name, verbose))
+
 class Line(object):
-    def __init__(self, points, name, verbose):
-        x1, y1 = points[0]
-        x2, y2 = points[1]
+    def __init__(self, point_list, name, verbose):
+        x1, y1 = point_list[0]
+        x2, y2 = point_list[1]
         num_points = int(raw_input('Number of points in line: '))
 
         XL = min(x1,x2)
@@ -58,9 +79,9 @@ class Line(object):
                     name + str(unichr(ord('A') + i)), verbose))
 
 class Rectangle(object):
-    def __init__(self, points, name, verbose):
-        x1, y1 = points[0]
-        x2, y2 = points[1]
+    def __init__(self, point_list, name, verbose):
+        x1, y1 = point_list[0]
+        x2, y2 = point_list[1]
 
         XL = min(x1,x2)
         XR = max(x1,x2)
@@ -77,9 +98,9 @@ class Rectangle(object):
         self.locs.append(Location(XCT, YCT, name + "_CT", verbose + " Center"))
 
 class Grid(object):
-    def __init__(self, points, name, verbose):
-        x1, y1 = points[0]
-        x2, y2 = points[1]
+    def __init__(self, point_list, name, verbose):
+        x1, y1 = point_list[0]
+        x2, y2 = point_list[1]
 
         XL = min(x1,x2)
         XR = max(x1,x2)
@@ -101,19 +122,11 @@ class Grid(object):
                 y_coord = y_justification + (density * y)
                 self.locs.append(Location(x_coord, y_coord, name + addage, verbose + addage))
 
-# Valid Modes:
-#   - Point
-#   - Line
-#   - Rectangle
-#   - Grid
 density = 30
+num_vertices = 1 
+builder_function = Point
 
-# Current Behavior: modes are kept separate; if you change modes before you 'complete'
-#                   a log then you delete that log
-num_vertices = 1 #{'Point':1, 'Line':2,'Rectangle':2,'Grid':2}
-builder_function = Location #{'Point':Location, 'Line':Line,'Rectangle':Rectangle,'Grid':Grid}
-
-points = [] # for all modes; erased when changing modes
+points = []
 delete_list = []
 locations = [] # list of things to post at end
 
@@ -157,49 +170,26 @@ def main(argv, debug):
     image_tk = ImageTk.PhotoImage(image)
     oncanvas = canvas.create_image(image.size[0]//2, image.size[1]//2, image=image_tk)
 
-    modes = []
-    def add_point(event):
+    def draw_point(x, y, color):
         global points
-        global locations
         global delete_list
-        
-        def draw_point(x, y, color):
-            radius = 2 #point radius  
-            new_canvas = canvas.create_oval(x - radius, y - radius, x + radius, y + radius, fill=color)
-            points.append( (x,y) )
-            delete_list.append(new_canvas)
 
+        radius = 2 #point radius  
+        new_canvas = canvas.create_oval(x - radius, y - radius, x + radius, y + radius, fill=color)
+        points.append( (x,y) )
+        delete_list.append(new_canvas)
+
+    def add_point(event):
         draw_point(event.x, event.y, 'blue')
 
         if len(points) == num_vertices:
-            name = raw_input("Short name: ")
-            verbose = raw_input("Verbose name: ")
-
-            possible_locs = []
-            if num_vertices == 1:
-                x, y = points[0]
-                point = Location(x, y, name, verbose)
-                possible_locs.append(point)
-            else:
-                mode_points = builder_function(points, name, verbose)
-                possible_locs = mode_points.locs
-            reset()
-
-            for i, point in enumerate(possible_locs):
-                print 'Point', i + 1, ':'
-                print '     Name: ', point.name, 'Verbose: ', point.verbose
-                draw_point(point.x, point.y, 'red')
-
-            command = raw_input("Confirm Points? [Y/N]")
-            if command == 'Y':
-                locations = locations + possible_locs
-                points = []
-                delete_list = []
-            else:
-                reset()
+            log_btn.pack(side='left')
         elif len(points) > num_vertices:
             reset()
             draw_point(event.x, event.y, 'blue')
+            log_btn.pack_forget()
+        else:
+            log_btn.pack_forget()
 
     def reset():
         global points
@@ -211,15 +201,13 @@ def main(argv, debug):
         delete_list = []
 
     def point_mode():
-        global mode
         global num_vertices
         global builder_function
         num_vertices = 1
-        builder_function = Location
+        builder_function = Point
         reset()
 
     def line_mode():
-        global mode
         global num_vertices
         global builder_function
         num_vertices = 2
@@ -227,7 +215,6 @@ def main(argv, debug):
         reset()  
 
     def rectangle_mode():
-        global mode
         global num_vertices
         global builder_function
         num_vertices = 2
@@ -235,7 +222,6 @@ def main(argv, debug):
         reset()
 
     def grid_mode():
-        global mode
         global num_vertices
         global builder_function
         global density
@@ -245,20 +231,44 @@ def main(argv, debug):
             density = raw_input("Density: ")
         reset()
 
+    def log():
+        global locations
+        global points
+        global delete_list
+
+        name = raw_input("Short name: ")
+        verbose = raw_input("Verbose name: ")
+
+        mode_points = builder_function(points, name, verbose)
+        possible_locs = mode_points.locs
+        reset()
+
+        for i, point in enumerate(possible_locs):
+            print 'Point', i + 1, ':'
+            print '     Name: ', point.name, 'Verbose: ', point.verbose
+            draw_point(point.x, point.y, 'red')
+
+        command = raw_input("Confirm Points? [Y/N]")
+        if command == 'Y':
+            locations = locations + possible_locs
+            points = []
+            delete_list = []
+        else:
+            reset()
+        log_btn.pack_forget()
+
     point_btn = Tkinter.Button(frame, text="Point",command=point_mode)
     line_btn = Tkinter.Button(frame, text="Line",command=line_mode)
     rectangle_btn = Tkinter.Button(frame, text="Rectangle",command=rectangle_mode)
     grid_btn = Tkinter.Button(frame, text="Grid",command=grid_mode)
-    # delete_btn = Tkinter.Button(frame, text="Delete",command=delete_point)
+    log_btn = Tkinter.Button(frame, text="Log",command=log)
 
     point_btn.pack(side='left')
     line_btn.pack(side='left')
     rectangle_btn.pack(side='left')
     grid_btn.pack(side="left")
-    # delete_btn.pack(side="left")
 
     canvas.bind("<Button-1>", add_point)
-    # canvas.bind("<Button-3>", delete_point)
 
     window.mainloop()
     command = raw_input("Save Points? [Y/N] ")
