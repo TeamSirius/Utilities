@@ -134,14 +134,16 @@ def aps_by_building(building, floor):
     if not floor_id:
         return ERROR_RETURN
 
-    cur.execute("""SELECT id,verbose_name from location where floor_id=%s """,
+    cur.execute("""SELECT id,verbose_name,x,y from location where floor_id=%s """,
                 [floor_id[0]])
 
     things = [] #TODO: CHANGE NAMES fosho
     for x in cur.fetchall():
         things.append({
             'id': x[0],
-            'verbose_name': x[1]
+            'verbose_name': x[1],
+            'x':x[2],
+            'y':x[3]
         })
 
     return json.dumps(things)
