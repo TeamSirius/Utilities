@@ -59,7 +59,7 @@ def APS():
     try:
         data = request.get_json(force=True) #TODO: REMOVE FORCE IF POSSIBLe
         lid = int(data['lid'])
-        if lid == -1:
+        if lid < 1:
             from kNN import demo, AccessPoint
             from datetime import datetime
             knnData = {}
@@ -68,21 +68,24 @@ def APS():
                 if 'std' in item:
                     APS.append( ( item['MAC'], float(item['strength']), float(item['std']), datetime.now(), 10 ) )
                 else:
-                APS.append( ( item['MAC'], float(item['strength']), 0, datetime.now(), 10 ) )
+                    APS.append( ( item['MAC'], float(item['strength']), 0, datetime.now(), 10 ) )
             (x, y) = demo(APS)
             cur.execute("""INSERT into demhoes (x,y, recorded)
                     VALUES ( %s, %s, NOW() )""", [x,y]) #UTC TIME
             return json.dumps({'success': {"x" : x, "y" : y}})
         else:
-            for item in data["APS"]:
-                if 'std' in item:
-                    cur.execute("""INSERT into accesspoint (MAC, strength, location_id, std_dev, recorded)
-                        VALUES ( %s, %s, %s,%s, NOW() )""",
-                        [item['MAC'], float(item['strength']),lid, float(item['std'])] ) #UTC TIME
-                else:
-                    cur.execute("""INSERT into accesspoint (MAC, strength, location_id, std_dev, recorded)
-                        VALUES ( %s, %s, %s,%s, NOW() )""",
-                        [item['MAC'], float(item['strength']),lid, -1] ) #UTC TIME
+            cur.execute("""SELECT count(*) from accesspoint where location_id=%s""",[lid])
+            count = cur.fetchone()
+            if not count or int(count) == 0: #Will only log new data -- if already logged will ignore
+                for item in data["APS"]:
+                    if 'std' in item:
+                        cur.execute("""INSERT into accesspoint (MAC, strength, location_id, std_dev, recorded)
+                            VALUES ( %s, %s, %s,%s, NOW() )""",
+                            [item['MAC'], float(item['strength']),lid, float(item['std'])] ) #UTC TIME
+                    else:
+                        cur.execute("""INSERT into accesspoint (MAC, strength, location_id, std_dev, recorded)
+                            VALUES ( %s, %s, %s,%s, NOW() )""",
+                            [item['MAC'], float(item['strength']),lid, -1] ) #UTC TIME
     except Exception, e:
         handle_exception(e)
         return ERROR_RETURN
@@ -115,7 +118,8 @@ def floor():
         building_name = r['building']
         try:
             floor_num = int(floor_num)
-        except:
+        except Exception, e:
+            handle_exception(e)
             return ERROR_RETURN
         cur.execute("""INSERT into floor (imagePath, floor, building)
             VALUES (%s,%s,%s)""",[add_path,floor_num,building_name])
@@ -143,7 +147,8 @@ def aps_by_building(building, floor):
     params = [building, floor]
     try:
         floor_number = int(params[1])
-    except:
+    except Exception, e:
+        handle_exception(e)
         return ERROR_RETURN
 
     cur.execute("""SELECT id from floor where floor=%s and building=%s""",
@@ -204,7 +209,8 @@ def location():
                 json_return[keys[i]] = x[i]
             return json.dumps(json_return) #TODO: MAKE RESPONSE FUNCTION --> string to json
 
-        except:
+        except Exception, e:
+            handle_exception(e)
             return ERROR_RETURN
 
 
