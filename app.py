@@ -4,6 +4,7 @@
 from flask import Flask
 from flask import request
 from db import cur, DEBUG
+import sys
 # from db import conn
 import json
 
@@ -14,6 +15,9 @@ app = Flask(__name__)
 # The error response json
 ERROR_RETURN = json.dumps({'error': "Error"})
 SUCCESS_RETURN = json.dumps({'success': "Success"})
+
+def log(msg):
+    sys.stderr.write("ERROR: {}\n".format(msg))
 
 def all_in(L, dic):
     """Given a list and a dictionary checks that
@@ -65,7 +69,8 @@ def APS():
                 cur.execute("""INSERT into accesspoint (MAC, strength, location_id, std_dev, recorded)
                     VALUES ( %s, %s, %s,%s, NOW() )""",
                     [item['MAC'], float(item['strength']),lid, float(item['std'])] ) #UTC TIME
-    except:
+    except Exception, e:
+        log(str(repr(e)))
         return ERROR_RETURN
     return SUCCESS_RETURN
 
