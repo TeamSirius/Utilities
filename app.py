@@ -54,7 +54,7 @@ def APS():
         data = request.get_json(force=True) #TODO: REMOVE FORCE IF POSSIBLe
         lid = int(data['lid'])
         if lid == -1:
-            from kNN import kNN, AccessPoint
+            from kNN import demo, AccessPoint
             from datetime import datetime
             knnData = {}
             APS = []
