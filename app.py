@@ -66,9 +66,14 @@ def APS():
             return json.dumps({'success': {"x" : x, "y" : y}})
         else:
             for item in data["APS"]:
-                cur.execute("""INSERT into accesspoint (MAC, strength, location_id, std_dev, recorded)
-                    VALUES ( %s, %s, %s,%s, NOW() )""",
-                    [item['MAC'], float(item['strength']),lid, float(item['std'])] ) #UTC TIME
+                if 'std' in item:
+                    cur.execute("""INSERT into accesspoint (MAC, strength, location_id, std_dev, recorded)
+                        VALUES ( %s, %s, %s,%s, NOW() )""",
+                        [item['MAC'], float(item['strength']),lid, float(item['std'])] ) #UTC TIME
+                else:
+                    cur.execute("""INSERT into accesspoint (MAC, strength, location_id, std_dev, recorded)
+                        VALUES ( %s, %s, %s,%s, NOW() )""",
+                        [item['MAC'], float(item['strength']),lid, -1] ) #UTC TIME
     except Exception, e:
         log(str(repr(e)))
         return ERROR_RETURN
