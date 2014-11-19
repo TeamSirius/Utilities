@@ -63,7 +63,7 @@ def APS():
                     APS.append( ( item['MAC'], float(item['strength']), float(item['std']), datetime.now(), 10 ) )
                 else:
                     APS.append( ( item['MAC'], float(item['strength']), 0, datetime.now(), 10 ) )
-            (x, y) = kNN(APS)
+            (x, y) = demo(APS)
             cur.execute("""INSERT into demhoes (x,y, recorded)
                     VALUES ( %s, %s, NOW() )""", [x,y]) #UTC TIME
             return json.dumps({'success': {"x" : x, "y" : y}})
