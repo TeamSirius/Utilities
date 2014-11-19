@@ -4,7 +4,7 @@
 from flask import Flask
 from flask import request
 from db import cur, DEBUG
-import sys
+import sys,os
 # from db import conn
 import json
 
@@ -17,7 +17,13 @@ ERROR_RETURN = json.dumps({'error': "Error"})
 SUCCESS_RETURN = json.dumps({'success': "Success"})
 
 def log(msg):
-    sys.stderr.write("ERROR: {}\n".format(msg))
+    sys.stderr.write("{}\n".format(msg))
+
+def handle_exception(e):
+    exc_type, exc_obj, exc_tb = sys.exc_info()
+    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+    log("Error: {} in file {} at line {}".format(str(repr(e)), fname, exc_tb.tb_lineno))
+
 
 def all_in(L, dic):
     """Given a list and a dictionary checks that
@@ -59,9 +65,9 @@ def APS():
             knnData = {}
             APS = []
             for item in data["APS"]:
-                # if 'std' in item:
-                #     APS.append( ( item['MAC'], float(item['strength']), float(item['std']), datetime.now(), 10 ) )
-                # else:
+                if 'std' in item:
+                    APS.append( ( item['MAC'], float(item['strength']), float(item['std']), datetime.now(), 10 ) )
+                else:
                 APS.append( ( item['MAC'], float(item['strength']), 0, datetime.now(), 10 ) )
             (x, y) = demo(APS)
             cur.execute("""INSERT into demhoes (x,y, recorded)
@@ -78,7 +84,7 @@ def APS():
                         VALUES ( %s, %s, %s,%s, NOW() )""",
                         [item['MAC'], float(item['strength']),lid, -1] ) #UTC TIME
     except Exception, e:
-        log(str(repr(e)))
+        handle_exception(e)
         return ERROR_RETURN
     return SUCCESS_RETURN
 
