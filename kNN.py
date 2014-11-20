@@ -23,6 +23,7 @@ class AccessPoint(object):
         #self.sample_size = ap[4]
 
 # Location Class
+# TODO: Look into storing previous distance calculations
 class Location(object):
     def __init__(self, loc):
         self.x = loc[0]
@@ -111,6 +112,7 @@ def weighted_avg(tuples):
 def apply_kNN(data, aps, k = 7):
     k = min(k, len(data))
     data = sorted(data, key=lambda x: x.get_distance(aps))
+    #TODO: Reconsider avg vs. mode
     d = Counter([loc.floor_id for loc in data[:k]])
     floor = d.most_common(1)[0][0]
     x = weighted_avg([(loc.x, loc.get_distance(aps)) for loc in data[:k]])
@@ -177,6 +179,7 @@ def get_data_locations(data):
         for i in range(len(cur_macs)):
             cur_aps.append((cur_macs[i], cur_rss[i], 0, 0))
         locations.append((d["x"], d["y"], d["direction"], d["floor_id"], cur_aps))
+        # TODO: Maybe take away list comprehension thing
     return [Location(i) for i in locations]
 
 def get_data2():
@@ -204,6 +207,14 @@ def kNN(cur_aps):
     data = get_locations("access_points.json")
     #normalize(data, cur_aps)
     (x, y, floor) = apply_kNN(data, cur_aps)
+
+# Gets and normalizes training Location data and current AccessPoint strengths
+# Runs kNN algorithm to predict current location and floor
+def demo(cur_aps):
+    #TODO: Change names
+    data = get_locations("access_points.json")
+    normalize(data, cur_aps)
+    (x, y, floor) = kNN(data, cur_aps)
     return (x,y)
 
 if __name__ == '__main__':
