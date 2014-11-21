@@ -40,6 +40,7 @@ def intersection_r(listas):
 	return set(listas[0]).intersection(*listas[1:]) 
 
 def main():
+	count = 0
 	sum_data = [[0 for i in range(5)] for j in range(5)]
 	for ts_id, id_list in enumerate(ids):
 		for t_id,ID in enumerate(id_list):
@@ -47,6 +48,7 @@ def main():
 		data = {}
 		if len(id_list) != 5:
 			pass
+		count += 1
 		cur.execute("""SET SESSION group_concat_max_len = 1000000""")
 		cur.execute("""SELECT accesspoint.location_id, GROUP_CONCAT(MAC) as MAC_list,
 			GROUP_CONCAT(strength) as strength_list,
@@ -85,9 +87,11 @@ def main():
 			print ' '.join(d)
 		print
 	print
+	if count == 0:
+		return
 	print "Average Table:"
 	for i in sum_data:
-		print ' '.join([str( round(x / float(len(ids)), 2) ).rjust(10) for x in i])
+		print ' '.join([str( round(x / float(count), 2) ).rjust(10) for x in i])
 
 def difference(L1,L2):
 	s = 0
