@@ -16,9 +16,11 @@ MIN_DETECTED = 0
 class AccessPoint(object):
     def __init__(self, ap):
         self.mac = ap[0]
-        self.strength = ap[1]
-        self.std = ap[2]
+        self.strength_dbm = float(ap[1])
+        self.strength = 10 ** (float(ap[1]) / 10)
+        self.std = 10 ** (float(ap[2]) / 10)
         self.datetime = ap[3]
+        #self.sample_size = ap[4]
 
 # Location Class
 # TODO: Look into storing previous distance calculations
@@ -26,7 +28,7 @@ class Location(object):
     def __init__(self, loc):
         self.x = loc[0]
         self.y = loc[1]
-        self.durrrr = loc[2]
+        self.direction = loc[2]
         self.floor_id = loc[3]
         self.init_aps(loc[4])
 
@@ -41,14 +43,38 @@ class Location(object):
 
     # Calculates distance between this Location and the given dictionary of
     # AccessPoints (currently calls function to calculate Euclidean distance)
+    #def get_distance(self, aps):
+        #distances = []
+        #keys = sets.Set()
+        #for mac_id in aps.keys():
+        #    keys.add(mac_id)
+        #for mac_id in self.aps.keys():
+        #    keys.add(mac_id)
+        #return euclidean(keys, self.aps, aps)
+
     def get_distance(self, aps):
-        distances = []
-        keys = sets.Set()
-        for mac_id in aps.keys():
-            keys.add(mac_id)
-        for mac_id in self.aps.keys():
-            keys.add(mac_id)
-        return euclidean(keys, self.aps, aps)
+        coeffA = 1
+        coeffB = 1
+        coeffC = 1
+        keys1 = self.aps.keys()
+        keys2 = aps.keys()
+        intersection = [key for key in keys1 if key in keys2]
+        if len(intersection) == 0:
+            return sys.maxint
+        size_shared = len(intersection)
+        size_diff = len(keys1) + len(keys2) - 2 * size_shared
+        probability = 0
+        for key in intersection:
+            probability += similarity(self.aps[key], aps[key])
+        probability = float(probability) / len(intersection)
+        return coeffA * size_shared + coeffB * size_diff + coeffC * probability
+
+def similarity(ap1, ap2):
+    from scipy.stats import ttest_ind,norm
+    return 1 - ttest_ind( 
+	    norm.rvs(loc=ap1.strength,scale=ap1.std,size=ap1.sample_size), 
+	    norm.rvs(loc=ap2.strength,scale=ap2.std,size=ap2.sample_size), 
+	    equal_var = False)[1]
 
 # Given a set of mac_ids and two dictionaries of AccessPoints, calculates the
 # Euclidean distance between the two dictionaries
@@ -83,7 +109,7 @@ def weighted_avg(tuples):
 
 # Uses k - Nearest Neighbor technique to get the coordinates associated with
 # the given AccessPoint dictionary
-def kNN(data, aps, k = 7):
+def apply_kNN(data, aps, k = 7):
     k = min(k, len(data))
     data = sorted(data, key=lambda x: x.get_distance(aps))
     #TODO: Reconsider avg vs. mode
@@ -156,6 +182,31 @@ def get_data_locations(data):
         # TODO: Maybe take away list comprehension thing
     return [Location(i) for i in locations]
 
+def get_data2():
+    # Change this
+    data = [(1,1,3,0,[(1,-66,1,1), (2, -60, 2, 2)]),
+            (2,2,3,0,[(1,-55,1,1), (3, -45, 2, 2), (4, -55, 2, 2)]),
+            (3,3,3,0,[(1,-80,1,1), (4, -70, 2, 2)]),
+            (4,4,3,0,[(1,-55,1,1), (2, -85, 2, 2), (4, -55, 2, 2)]),
+            (5,5,3,0,[(2,-80,1,1), (4, -70, 2, 2)]),
+            (6,6,3,0,[(2,-55,1,1), (3, -55, 2, 2), (4, -55, 2, 2)]),
+            (7,7,3,0,[(3,-60,1,1), (4, -70, 2, 2)]),
+            (8,8,5,0,[(4,-50,3,3)])]
+
+    new_aps = [(3,-55,2,2), (4,-75,4,1)]
+
+    formatted_data = [Location(i) for i in data]
+    formatted_aps = {}
+    for ap in new_aps:
+        formatted_aps[ap[0]] = AccessPoint(ap)
+    return (formatted_data, formatted_aps)
+
+# Gets and normalizes training Location data and current AccessPoint strengths
+# Runs kNN algorithm to predict current location and floor
+def kNN(cur_aps):
+    data = get_locations("access_points.json")
+    #normalize(data, cur_aps)
+    (x, y, floor) = apply_kNN(data, cur_aps)
 
 # Gets and normalizes training Location data and current AccessPoint strengths
 # Runs kNN algorithm to predict current location and floor
