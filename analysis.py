@@ -15,12 +15,26 @@ names = {
 }
 
 
-titles = [["2 Pulls", "10 Pulls", "30 Pulls", "60 Pulls", "100 Pulls"],["T1", "T2", "T3", "T4","T5"]]
+titles = [
+	["2 Pulls", "10 Pulls", "30 Pulls", "60 Pulls", "100 Pulls"],
+	["2 Pulls", "10 Pulls", "30 Pulls", "60 Pulls", "100 Pulls"],
+	["2 Pulls", "10 Pulls", "30 Pulls", "60 Pulls", "100 Pulls"],
+	["2 Pulls", "10 Pulls", "30 Pulls", "60 Pulls", "100 Pulls"],
+	["2 Pulls", "10 Pulls", "30 Pulls", "60 Pulls", "100 Pulls"]
+	]
 
 #IDS must be parallel with the corresponding titles array
 #	LISTS MUST BE OF LENTH 5
 
-ids = [[100,101,102,103,104],[6,7,8,9,10]]
+## LOG TO POINTS 136 -- 160
+
+ids = [
+	[136,137,138,139,140],
+	[141,142,143,144,145],
+	[146,147,148,149,150],
+	[151,152,153,154,155],
+	[156,157,158,159,160]
+	]
 
 
 
@@ -47,8 +61,7 @@ def main():
 			names[str(ID)] = titles[ts_id][t_id]
 		data = {}
 		if len(id_list) != 5:
-			pass
-		count += 1
+			continue
 		cur.execute("""SET SESSION group_concat_max_len = 1000000""")
 		cur.execute("""SELECT accesspoint.location_id, GROUP_CONCAT(MAC) as MAC_list,
 			GROUP_CONCAT(strength) as strength_list,
@@ -62,6 +75,9 @@ def main():
 			 "strengths": [float(r) for r in row[2].split(",")]}#,
 			# "stds": [float(r) for r in row[3].split(",")]}
 			all_macs.append( row[1].split(",") )
+		if not all_macs:
+			continue
+		count += 1
 		unique = len(set(flatten(all_macs)))
 		intermacs = intersection(all_macs)
 		stds = []
