@@ -28,14 +28,23 @@ titles = [
 
 ## LOG TO POINTS 136 -- 160
 
-ids = [
-	[136,137,138,139,140],
-	[141,142,143,144,145],
-	[146,147,148,149,150],
-	[151,152,153,154,155],
-	[156,157,158,159,160]
-	]
+# ids = [
+# 	[136,137,138,139,140],
+# 	[141,142,143,144,145],
+# 	[146,147,148,149,150],
+# 	[151,152,153,154,155],
+# 	[156,157,158,159,160]
+# 	]
 
+ids = [[100,101,102,103,104]]
+
+PRINT_TABLES = True
+
+def get_index(L, item):
+	try:
+		return L.index(item)
+	except ValueError:
+		return -1
 
 
 def flatten(L):
@@ -78,7 +87,33 @@ def main():
 		if not all_macs:
 			continue
 		count += 1
-		unique = len(set(flatten(all_macs)))
+		unique_macs = set(flatten(all_macs))
+		unique = len(unique_macs)
+
+		if PRINT_TABLES:
+			print "All {} accesspoints".format(unique)
+			ks = [" " * 20]
+			for k in sorted(data.keys(),key=lambda x: int(names[x].split()[0])):
+				ks.append(names[str(k)].rjust(15))
+			print ' '.join(ks)
+			mac_dict = {}
+			for mac_addr in unique_macs:
+				mac_dict[mac_addr] = []
+			MAC_Counts = []
+			for k,vals in sorted(data.iteritems(),key=lambda x: int(names[x[0]].split()[0])):
+				MAC_counter = 0
+				for mac_addr in unique_macs:
+					index = get_index(vals["mac"], mac_addr)
+					if index != -1:
+						mac_dict[mac_addr].append(str(round(vals["strengths"][index],2)).rjust(15))
+						MAC_counter += 1
+					else:
+						mac_dict[mac_addr].append("-".rjust(15))
+				MAC_Counts.append(MAC_counter)
+			for k,v in mac_dict.iteritems():
+				print k.rjust(20), ' '.join(v)
+			print "Total Macs".rjust(20), ' '.join([str(x).rjust(15) for x in MAC_Counts])
+
 		intermacs = intersection(all_macs)
 		stds = []
 		print "Comparing {} common mac addresses of {} unique".format(len(intermacs),unique)
