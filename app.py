@@ -75,7 +75,7 @@ def APS():
             return json.dumps({'success': {"x" : x, "y" : y}})
         else:
             cur.execute("""SELECT count(*) from accesspoint where location_id=%s""",[lid])
-            count = cur.fetchone()
+            count = cur.fetchone()[0]
             if not count or int(count) == 0: #Will only log new data -- if already logged will ignore
                 for item in data["APS"]:
                     if 'std' in item:
