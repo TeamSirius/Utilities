@@ -25,6 +25,7 @@ titles = [
 
 #IDS must be parallel with the corresponding titles array
 #	LISTS MUST BE OF LENTH 5
+#	Titles must be in the format: number + " " + string
 
 ## LOG TO POINTS 136 -- 160
 
@@ -125,10 +126,10 @@ def main():
 				L[k].append( vals["strengths"][vals["mac"].index(imac)] )
 
 		ks = [" " * 10]
-		for k in sorted(L.keys(),key=lambda x: names[x]):
+		for k in sorted(L.keys(),key=lambda x: int(names[x].split()[0])):
 			ks.append(names[str(k)].rjust(10))
 		print ' '.join(ks)
-		sorted_items = sorted(L.iteritems(),key=lambda x: names[x[0]])
+		sorted_items = sorted(L.iteritems(),key=lambda x: int(names[x[0]].split()[0]))
 		for i,(k,v) in enumerate(sorted_items):
 			d = [names[str(k)].ljust(10)]
 			for j,(key,val) in enumerate(sorted_items):
