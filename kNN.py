@@ -8,6 +8,7 @@ import math
 import json
 from pprint import pprint
 import sys
+from db import cur
 
 # Minimum normalized RSSI value detected; used as "not detected" value
 MIN_DETECTED = 0
@@ -41,33 +42,41 @@ class Location(object):
         for ap in aps:
             self.aps[ap[0]] = AccessPoint(ap)
 
-    # Calculates distance between this Location and the given dictionary of
-    # AccessPoints (currently calls function to calculate Euclidean distance)
-    #def get_distance(self, aps):
-        #distances = []
-        #keys = sets.Set()
-        #for mac_id in aps.keys():
-        #    keys.add(mac_id)
-        #for mac_id in self.aps.keys():
-        #    keys.add(mac_id)
-        #return euclidean(keys, self.aps, aps)
+    #Calculates distance between this Location and the given dictionary of
+    #AccessPoints (currently calls function to calculate Euclidean distance)
+    def get_distance1(self, aps):
+        distances = []
+        keys = sets.Set()
+        for mac_id in aps.keys():
+            keys.add(mac_id)
+        for mac_id in self.aps.keys():
+            keys.add(mac_id)
+        return euclidean(keys, self.aps, aps)
 
-    def get_distance(self, aps):
-        coeffA = 1
-        coeffB = 1
-        coeffC = 1
-        keys1 = self.aps.keys()
-        keys2 = aps.keys()
-        intersection = [key for key in keys1 if key in keys2]
-        if len(intersection) == 0:
-            return sys.maxint
-        size_shared = len(intersection)
-        size_diff = len(keys1) + len(keys2) - 2 * size_shared
-        probability = 0
-        for key in intersection:
-            probability += similarity(self.aps[key], aps[key])
-        probability = float(probability) / len(intersection)
-        return coeffA * size_shared + coeffB * size_diff + coeffC * probability
+    def get_distance2(self, aps):
+        num_similar = 0
+        for mac_id in aps.keys():
+            if mac_id in self.aps.keys():
+                num_similar += 1
+        return num_similar
+
+
+    #def get_distance(self, aps):
+    #    coeffA = 1
+    #    coeffB = 1
+    #   coeffC = 1
+    #   keys1 = self.aps.keys()
+    #   keys2 = aps.keys()
+    #   intersection = [key for key in keys1 if key in keys2]
+    #   if len(intersection) == 0:
+    #       return sys.maxint
+    #   size_shared = len(intersection)
+    #   size_diff = len(keys1) + len(keys2) - 2 * size_shared
+    #   probability = 0
+    #   for key in intersection:
+    #       probability += similarity(self.aps[key], aps[key])
+    #   probability = float(probability) / len(intersection)
+    #   return coeffA * size_shared + coeffB * size_diff + coeffC * probability"""
 
 def similarity(ap1, ap2):
     from scipy.stats import ttest_ind,norm
@@ -91,32 +100,44 @@ def euclidean(keys, aps1, aps2):
         strength2 = 10 ** (strength2 / 10)
         rVal = rVal + (strength1 - strength2) ** 2
     rVal = math.sqrt(rVal)
+    print "SIMILARITY:", rVal
     return rVal
 
 # Given a list of tuples where t[0] is the value and t[1] is the distance,
 # returns a weighted average of the values
-def weighted_avg(tuples):
+def weighted_avg(tuples, inverse):
     ### If we want the unweighted average:
     #return sum([t[0] for t in tuples]) / len(tuples)
     s = 0
     if tuples[0][1] == 0:
             return tuples[0][0]
-    weight_sum = sum([1 / t[1] for t in tuples])
+    if inverse:
+        weight_sum = sum([1 / t[1] for t in tuples])
+    else:
+        weight_sum = sum([t[1] for t in tuples])
     for t in tuples:
-        s += t[0] * (1 / t[1]) / weight_sum
+        if inverse:
+            s += t[0] * (1 / t[1]) / weight_sum
+        else:
+            s += t[0] * t[1] / weight_sum
     return s
 
 
 # Uses k - Nearest Neighbor technique to get the coordinates associated with
 # the given AccessPoint dictionary
-def apply_kNN(data, aps, k = 7):
+def apply_kNN(data, aps, k = 3):
     k = min(k, len(data))
-    data = sorted(data, key=lambda x: x.get_distance(aps))
+    #data = sorted(data, key=lambda x: x.get_distance1(aps))
+    for d in data:
+        d.distance = d.get_distance1(aps)
+    data = sorted(data, key=lambda x: x.distance)
     #TODO: Reconsider avg vs. mode
     d = Counter([loc.floor_id for loc in data[:k]])
     floor = d.most_common(1)[0][0]
-    x = weighted_avg([(loc.x, loc.get_distance(aps)) for loc in data[:k]])
-    y = weighted_avg([(loc.y, loc.get_distance(aps)) for loc in data[:k]])
+    for d in data:
+        print "Data:", d.x
+    x = weighted_avg([(loc.x, loc.distance) for loc in data[:k]], True)
+    y = weighted_avg([(loc.y, loc.distance) for loc in data[:k]], True)
     return (x, y, floor)
     
 # Returns the standard deviation of the given list
@@ -156,9 +177,8 @@ def normalize(data, aps):
 
 
 # Returns a list of Locations and an AccessPoint dictionary
-def get_locations(filename):
-    json_data = open(filename)
-    data = json.load(json_data)
+def get_locations():
+    data = getData()
     locations = []
     #sys.stderr.write("LENGTH: " + str(len(data)) + "\n")
     for d in data:
@@ -193,7 +213,7 @@ def get_data2():
             (7,7,3,0,[(3,-60,1,1), (4, -70, 2, 2)]),
             (8,8,5,0,[(4,-50,3,3)])]
 
-    new_aps = [(3,-55,2,2), (4,-75,4,1)]
+    new_aps = [(1,-66,2,2), (2,-64,4,1)]
 
     formatted_data = [Location(i) for i in data]
     formatted_aps = {}
@@ -201,21 +221,28 @@ def get_data2():
         formatted_aps[ap[0]] = AccessPoint(ap)
     return (formatted_data, formatted_aps)
 
-# Gets and normalizes training Location data and current AccessPoint strengths
-# Runs kNN algorithm to predict current location and floor
-def kNN(cur_aps):
-    data = get_locations("access_points.json")
-    #normalize(data, cur_aps)
-    (x, y, floor) = apply_kNN(data, cur_aps)
+def getData():
+	cur.execute("""SET SESSION group_concat_max_len = 1000000""")
+	cur.execute("""SELECT floor_id,accesspoint.location_id,x,y,direction, GROUP_CONCAT(MAC) as MAC_list,GROUP_CONCAT(strength) as strength_list from accesspoint
+	 join location on location.id=accesspoint.location_id
+	  group by accesspoint.location_id,x,y,direction""")
+	access_points = cur.fetchall()
+	res = []
+	for f in access_points:
+	    msg = {
+	        'floor_id': f[0],
+	        'location_id': f[1],
+	        'x': f[2],
+	        'y': f[3],
+	        'direction': f[4],
+	        'macs': f[5].split(','),
+	        'rss': map(int, f[6].split(','))
+	    }
+	    res.append(msg)
+	return res
 
-# Gets and normalizes training Location data and current AccessPoint strengths
-# Runs kNN algorithm to predict current location and floor
-def demo(cur_aps):
-    #TODO: Change names
-    data = get_locations("access_points.json")
-    normalize(data, cur_aps)
-    (x, y, floor) = kNN(data, cur_aps)
-    return (x,y)
-
-if __name__ == '__main__':
-    main()
+def kNN(aps):
+    data = get_locations()
+    normalize(data, aps)
+    (x, y, floor) = apply_kNN(data, aps)
+    print "X, Y:", x, y
