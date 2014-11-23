@@ -236,7 +236,7 @@ def getData():
 	        'y': f[3],
 	        'direction': f[4],
 	        'macs': f[5].split(','),
-	        'rss': map(int, f[6].split(','))
+	        'rss': map(float, f[6].split(','))
 	    }
 	    res.append(msg)
 	return res
