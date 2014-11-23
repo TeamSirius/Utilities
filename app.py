@@ -158,7 +158,7 @@ def aps_by_building(building, floor):
     if not floor_id:
         return ERROR_RETURN
 
-    cur.execute("""SELECT id,verbose_name,x,y from location where floor_id=%s """,
+    cur.execute("""SELECT id,verbose_name,x,y from location where floor_id=%s AND direction=0 """,
                 [floor_id[0]])
 
     things = [] #TODO: CHANGE NAMES fosho

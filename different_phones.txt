@@ -127,3 +127,9 @@ Average Table:
        4.5        0.0        2.0        7.5
        2.5        2.0        0.0        9.5
       12.0        7.5        9.5        0.0
+
+
+0 phone -> HTC one
+1 phone -> LG Nexus 4
+2 phone -> Samsung Galexy S3
+3 phone -> Samsung Galexy Nexus
