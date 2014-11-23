@@ -60,7 +60,7 @@ def APS():
         data = request.get_json(force=True) #TODO: REMOVE FORCE IF POSSIBLe
         lid = int(data['lid'])
         if lid < 1:
-            from kNN import demo, AccessPoint
+            from kNN import kNN, AccessPoint
             from datetime import datetime
             knnData = {}
             APS = []
@@ -69,7 +69,7 @@ def APS():
                     APS.append( ( item['MAC'], float(item['strength']), float(item['std']), datetime.now(), 10 ) )
                 else:
                     APS.append( ( item['MAC'], float(item['strength']), 0, datetime.now(), 10 ) )
-            (x, y) = demo(APS)
+            (x, y) = kNN(APS)
             cur.execute("""INSERT into demhoes (x,y, recorded)
                     VALUES ( %s, %s, NOW() )""", [x,y]) #UTC TIME
             return json.dumps({'success': {"x" : x, "y" : y}})
