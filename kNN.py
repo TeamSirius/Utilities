@@ -100,7 +100,6 @@ def euclidean(keys, aps1, aps2):
         strength2 = 10 ** (strength2 / 10)
         rVal = rVal + (strength1 - strength2) ** 2
     rVal = math.sqrt(rVal)
-    print "SIMILARITY:", rVal
     return rVal
 
 # Given a list of tuples where t[0] is the value and t[1] is the distance,
@@ -134,8 +133,6 @@ def apply_kNN(data, aps, k = 3):
     #TODO: Reconsider avg vs. mode
     d = Counter([loc.floor_id for loc in data[:k]])
     floor = d.most_common(1)[0][0]
-    for d in data:
-        print "Data:", d.x
     x = weighted_avg([(loc.x, loc.distance) for loc in data[:k]], True)
     y = weighted_avg([(loc.y, loc.distance) for loc in data[:k]], True)
     return (x, y, floor)
@@ -245,4 +242,4 @@ def kNN(aps):
     data = get_locations()
     normalize(data, aps)
     (x, y, floor) = apply_kNN(data, aps)
-    print "X, Y:", x, y
+    return (x,y)
