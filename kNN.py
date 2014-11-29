@@ -243,3 +243,55 @@ def kNN(aps):
     normalize(data, aps)
     (x, y, floor) = apply_kNN(data, aps)
     return (x,y)
+
+def getMinMax():
+    dataa = get_locations()
+    normalize(dataa[:-1], dataa[-1].aps)
+    minx = 100000
+    maxx = 0
+    miny = 100000
+    maxy = 0
+    for data in dataa:
+        if data.x < minx:
+            minx = data.x
+        if data.x > maxx:
+            maxx = data.x
+        if data.y < miny:
+            miny = data.y
+        if data.y > maxy:
+            maxy = data.y
+    return (minx, maxx, miny, maxy)
+
+def error(element, x, y, floor):
+    if element.floor_id != floor:
+        return -1
+    else:
+        dist = math.sqrt(pow(element.x - x, 2) + pow(element.y - y, 2))
+        return dist
+
+def LOOCV():
+    data = get_locations()
+    normalize(data[:-1], data[-1].aps) # Hacky way to normalize all data
+    wrong_floor_count = 0
+    error_total = 0
+    distances = [0] * 5 # [0-10, 10-20, 20-30, 30-40, 40+] ft
+    for i in range(len(data)):
+        element = data[i]
+        data.remove(element)
+        aps = element.aps
+        (x, y, floor) = apply_kNN(data, aps)
+        cur_error = error(element, x, y, floor)
+        if cur_error == -1:
+            wrong_floor_count += 1
+        else:
+            error_total += cur_error
+            # For Halligan_2.png, 45 px ~= 10 ft
+            distances[min(int(cur_error / 45), 4)] += 1
+        data.insert(i, element)
+    print "Wrong Floor Count:", wrong_floor_count
+    print "Correct Floor Count:", len(data) - wrong_floor_count
+    print "Avg error:", float(error_total) / (len(data) - wrong_floor_count)
+    print "Distances:", distances
+
+if __name__ == "__main__":
+    LOOCV()
