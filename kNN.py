@@ -53,6 +53,8 @@ class Location(object):
             keys.add(mac_id)
         euc_dist = euclidean(keys, self.aps, aps)
         percent_shared = float(len([ap for ap in aps.keys() if ap in self.aps.keys()])) / len(keys)
+        if percent_shared == 0:
+            return float("INF")
         return 1 / percent_shared + 1.5 * euc_dist
 
     def get_distance2(self, aps):
