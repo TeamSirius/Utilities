@@ -51,7 +51,9 @@ class Location(object):
             keys.add(mac_id)
         for mac_id in self.aps.keys():
             keys.add(mac_id)
-        return euclidean(keys, self.aps, aps)
+        euc_dist = euclidean(keys, self.aps, aps)
+        percent_shared = float(len([ap for ap in aps.keys() if ap in self.aps.keys()])) / len(keys)
+        return 1 / percent_shared + 1.5 * euc_dist
 
     def get_distance2(self, aps):
         num_similar = 0
@@ -99,11 +101,7 @@ def euclidean(keys, aps1, aps2):
             strength2 = aps2[key].strength
         strength2 = 10 ** (strength2 / 10)
         rVal = rVal + (strength1 - strength2) ** 2
-    rVal = math.sqrt(rVal)
-    percent_good = float(len([ap for ap in aps1.keys() if ap in aps2.keys()])) / len(keys)
-    return 1 / percent_good + 1.5 * rVal
-    return rVal / percent_good
-    #return rVal / (float(len([ap for ap in aps1.keys() if ap in aps2.keys()])) / ((len(aps1.keys()) + len(aps2.keys())) / 2))
+    return math.sqrt(rVal)
 
  
         # Given a list of tuples where t[0] is the value and t[1] is the distance,
@@ -137,20 +135,11 @@ def apply_kNN(data, aps, k = 3):
     #TODO: Reconsider avg vs. mode
     d = Counter([loc.floor_id for loc in data[:(k * 2 - 1)]])
     floor = d.most_common(1)[0][0]
-    interesting = []
     data = [d for d in data if d.floor_id == floor]
-    for d in data[:k]:
-        interesting.append(float(len([ap for ap in d.aps.keys() if ap in aps.keys()])) / len(aps.keys()))
-    interesting = float(sum(interesting)) / len(interesting)
     x = weighted_avg([(loc.x, loc.distance) for loc in data[:k]], True)
     y = weighted_avg([(loc.y, loc.distance) for loc in data[:k]], True)
-    return (x, y, floor, interesting)
+    return (x, y, floor)
 
-def run_analysis(data, aps):
-    sorted_data = sorted(data, key=lambda x: x.distance)
-    for d in sorted_data[:7]:
-        print "  Floor: " + str(d.floor_id)
-    
 # Returns the standard deviation of the given list
 def get_sd(l):
     mean = get_mean(l)
@@ -284,36 +273,33 @@ def error(element, x, y, floor):
         return dist
 
 def LOOCV():
+    import subprocess as sp
+    tmp = sp.call('clear', shell=True)
+    print "RUNNING LOOCV TESTS"
+    print ""
     data = get_locations()
     normalize(data[:-1], data[-1].aps) # Hacky way to normalize all data
     wrong_floor_count = 0
     error_total = 0
-    distances = [0] * 5 # [0-10, 10-20, 20-30, 30-40, 40+] ft
+    distances = [0] * 10 # [0-1 meter, 1-2, 2-3, etc]
     for i in range(len(data)):
         element = data[i]
         data.remove(element)
         aps = element.aps
-        (x, y, floor, interesting) = apply_kNN(data, aps)
+        (x, y, floor)  = apply_kNN(data, aps)
         cur_error = error(element, x, y, floor)
         if cur_error == -1:
             wrong_floor_count += 1
-            #print "Bad one found on floor", str(element.floor_id), "at", str(element.x), ":", str(element.y) + "(REALLY BAD)"
-            #print "Interesting:", interesting
-            #run_analysis(data, aps)
         else:
             error_total += cur_error
-            #For Halligan_2.png, 45 px ~= 10 ft
-            distances[min(int(cur_error / 45), 4)] += 1
-            #if int(cur_error / 45) > 3:
-                #print "Bad one found on floor", str(element.floor_id), "at", str(element.x), ":", str(element.y)
-                #print "Interesting:", interesting
-            #elif int(cur_error / 45) < 3:
-                #print "Good interesting:", interesting
+            #For Halligan_2.png, 14.764px ~= 1 meter
+            distances[min(int(cur_error / 14.764), 9)] += 1
         data.insert(i, element)
-    print "Wrong Floor Count:", wrong_floor_count
-    print "Correct Floor Count:", len(data) - wrong_floor_count
-    print "Avg error:", float(error_total) / (len(data) - wrong_floor_count)
+    print "FOR " + str(len(data)) + " POINTS:"
+    print "Incorrect Floor Count:", wrong_floor_count
+    print "Avg error: " + str(float(error_total) / (len(data) - wrong_floor_count) / 14.764) + "m"
     print "Distances:", distances
+    print ""
 
 if __name__ == "__main__":
     LOOCV()
