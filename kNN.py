@@ -245,7 +245,7 @@ def kNN(aps):
     data = get_locations()
     normalize(data, aps)
     (x, y, floor) = apply_kNN(data, aps)
-    return (x,y)
+    return (x, y, floor)
 
 def getMinMax():
     dataa = get_locations()
