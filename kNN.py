@@ -100,9 +100,12 @@ def euclidean(keys, aps1, aps2):
         strength2 = 10 ** (strength2 / 10)
         rVal = rVal + (strength1 - strength2) ** 2
     rVal = math.sqrt(rVal)
-    return rVal
+    percent_good = float(len([ap for ap in aps1.keys() if ap in aps2.keys()])) / len(keys)
+    return rVal / percent_good
+    return rVal / (float(len([ap for ap in aps1.keys() if ap in aps2.keys()])) / ((len(aps1.keys()) + len(aps2.keys())) / 2))
 
-# Given a list of tuples where t[0] is the value and t[1] is the distance,
+ 
+        # Given a list of tuples where t[0] is the value and t[1] is the distance,
 # returns a weighted average of the values
 def weighted_avg(tuples, inverse):
     ### If we want the unweighted average:
@@ -133,9 +136,18 @@ def apply_kNN(data, aps, k = 3):
     #TODO: Reconsider avg vs. mode
     d = Counter([loc.floor_id for loc in data[:k]])
     floor = d.most_common(1)[0][0]
+    interesting = []
+    for d in data[:k]:
+        interesting.append(float(len([ap for ap in d.aps.keys() if ap in aps.keys()])) / len(aps.keys()))
+    interesting = float(sum(interesting)) / len(interesting)
     x = weighted_avg([(loc.x, loc.distance) for loc in data[:k]], True)
     y = weighted_avg([(loc.y, loc.distance) for loc in data[:k]], True)
-    return (x, y, floor)
+    return (x, y, floor, interesting)
+
+def run_analysis(data, aps):
+    sorted_data = sorted(data, key=lambda x: x.distance)
+    for d in sorted_data[:7]:
+        print "  Floor: " + str(d.floor_id)
     
 # Returns the standard deviation of the given list
 def get_sd(l):
@@ -279,14 +291,22 @@ def LOOCV():
         element = data[i]
         data.remove(element)
         aps = element.aps
-        (x, y, floor) = apply_kNN(data, aps)
+        (x, y, floor, interesting) = apply_kNN(data, aps)
         cur_error = error(element, x, y, floor)
         if cur_error == -1:
             wrong_floor_count += 1
+            print "Bad one found on floor", str(element.floor_id), "at", str(element.x), ":", str(element.y) + "(REALLY BAD)"
+            print "Interesting:", interesting
+            #run_analysis(data, aps)
         else:
             error_total += cur_error
             # For Halligan_2.png, 45 px ~= 10 ft
             distances[min(int(cur_error / 45), 4)] += 1
+            if int(cur_error / 45) > 3:
+                print "Bad one found on floor", str(element.floor_id), "at", str(element.x), ":", str(element.y)
+                print "Interesting:", interesting
+            elif int(cur_error / 45) < 3:
+                print "Good interesting:", interesting
         data.insert(i, element)
     print "Wrong Floor Count:", wrong_floor_count
     print "Correct Floor Count:", len(data) - wrong_floor_count
