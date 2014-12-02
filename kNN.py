@@ -101,8 +101,9 @@ def euclidean(keys, aps1, aps2):
         rVal = rVal + (strength1 - strength2) ** 2
     rVal = math.sqrt(rVal)
     percent_good = float(len([ap for ap in aps1.keys() if ap in aps2.keys()])) / len(keys)
+    return 1 / percent_good + 1.5 * rVal
     return rVal / percent_good
-    return rVal / (float(len([ap for ap in aps1.keys() if ap in aps2.keys()])) / ((len(aps1.keys()) + len(aps2.keys())) / 2))
+    #return rVal / (float(len([ap for ap in aps1.keys() if ap in aps2.keys()])) / ((len(aps1.keys()) + len(aps2.keys())) / 2))
 
  
         # Given a list of tuples where t[0] is the value and t[1] is the distance,
@@ -134,9 +135,10 @@ def apply_kNN(data, aps, k = 3):
         d.distance = d.get_distance1(aps)
     data = sorted(data, key=lambda x: x.distance)
     #TODO: Reconsider avg vs. mode
-    d = Counter([loc.floor_id for loc in data[:k]])
+    d = Counter([loc.floor_id for loc in data[:(k * 2 - 1)]])
     floor = d.most_common(1)[0][0]
     interesting = []
+    data = [d for d in data if d.floor_id == floor]
     for d in data[:k]:
         interesting.append(float(len([ap for ap in d.aps.keys() if ap in aps.keys()])) / len(aps.keys()))
     interesting = float(sum(interesting)) / len(interesting)
@@ -295,18 +297,18 @@ def LOOCV():
         cur_error = error(element, x, y, floor)
         if cur_error == -1:
             wrong_floor_count += 1
-            print "Bad one found on floor", str(element.floor_id), "at", str(element.x), ":", str(element.y) + "(REALLY BAD)"
-            print "Interesting:", interesting
+            #print "Bad one found on floor", str(element.floor_id), "at", str(element.x), ":", str(element.y) + "(REALLY BAD)"
+            #print "Interesting:", interesting
             #run_analysis(data, aps)
         else:
             error_total += cur_error
-            # For Halligan_2.png, 45 px ~= 10 ft
+            #For Halligan_2.png, 45 px ~= 10 ft
             distances[min(int(cur_error / 45), 4)] += 1
-            if int(cur_error / 45) > 3:
-                print "Bad one found on floor", str(element.floor_id), "at", str(element.x), ":", str(element.y)
-                print "Interesting:", interesting
-            elif int(cur_error / 45) < 3:
-                print "Good interesting:", interesting
+            #if int(cur_error / 45) > 3:
+                #print "Bad one found on floor", str(element.floor_id), "at", str(element.x), ":", str(element.y)
+                #print "Interesting:", interesting
+            #elif int(cur_error / 45) < 3:
+                #print "Good interesting:", interesting
         data.insert(i, element)
     print "Wrong Floor Count:", wrong_floor_count
     print "Correct Floor Count:", len(data) - wrong_floor_count
