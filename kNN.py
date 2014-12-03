@@ -293,13 +293,19 @@ def LOOCV():
         if cur_error == -1:
             wrong_floor_count += 1
         else:
-            error_total += cur_error
+            
             #For Halligan_2.png, 14.764px ~= 1 meter
-            distances[min(int(cur_error / 14.764), 9)] += 1
+            #For Halligan_1.png 9.555px ~= 1 meter
+            if floor == 1: #id NOT FLOOR NUMBER!!
+                error_total += cur_error / 14.764
+                distances[min(int(cur_error / 14.764), 9)] += 1
+            else:
+                error_total += cur_error / 9.555
+                distances[min(int(cur_error / 9.555), 9)] += 1
         data.insert(i, element)
     print "FOR " + str(len(data)) + " POINTS:"
     print "Incorrect Floor Count:", wrong_floor_count
-    print "Avg error: " + str(float(error_total) / (len(data) - wrong_floor_count) / 14.764) + "m"
+    print "Avg error: " + str(float(error_total) / (len(data) - wrong_floor_count)) + "m"
     print "Distances:", distances
     print ""
 
