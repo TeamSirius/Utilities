@@ -142,6 +142,23 @@ def apply_kNN(data, aps, k = 3):
     y = weighted_avg([(loc.y, loc.distance) for loc in data[:k]], True)
     return (x, y, floor)
 
+
+def apply_kNN_func(data, aps, func , k = 3):
+    #function must take in two dictionaries from MAC : strength and return a strength
+    k = min(k, len(data))
+    #data = sorted(data, key=lambda x: x.get_distance1(aps))
+    for d in data:
+        d.distance =  func(aps, d.aps)
+    data = sorted(data, key=lambda x: x.distance)
+    #TODO: Reconsider avg vs. mode
+    d = Counter([loc.floor_id for loc in data[:(k * 2 - 1)]])
+    floor = d.most_common(1)[0][0]
+    data = [d for d in data if d.floor_id == floor]
+    x = weighted_avg([(loc.x, loc.distance) for loc in data[:k]], True)
+    y = weighted_avg([(loc.y, loc.distance) for loc in data[:k]], True)
+    return (x, y, floor)
+
+
 # Returns the standard deviation of the given list
 def get_sd(l):
     mean = get_mean(l)
@@ -293,7 +310,6 @@ def LOOCV():
         if cur_error == -1:
             wrong_floor_count += 1
         else:
-            
             #For Halligan_2.png, 14.764px ~= 1 meter
             #For Halligan_1.png 9.555px ~= 1 meter
             if floor == 1: #id NOT FLOOR NUMBER!!
@@ -309,5 +325,80 @@ def LOOCV():
     print "Distances:", distances
     print ""
 
+
+def LOOCV_func(data, distance_func ):
+    wrong_floor_count = 0
+    error_total = 0
+    distances = [0] * 10 # [0-1 meter, 1-2, 2-3, etc]
+    for i in range(len(data)):
+        element = data[i]
+        data.remove(element)
+        aps = element.aps
+        (x, y, floor)  = apply_kNN_func(data, aps,distance_func)
+        cur_error = error(element, x, y, floor)
+        if cur_error == -1:
+            wrong_floor_count += 1
+        else:
+            #For Halligan_2.png, 14.764px ~= 1 meter
+            #For Halligan_1.png 9.555px ~= 1 meter
+            if floor == 1: #id NOT FLOOR NUMBER!!
+                error_total += cur_error / 14.764
+                distances[min(int(cur_error / 14.764), 9)] += 1
+            else:
+                error_total += cur_error / 9.555
+                distances[min(int(cur_error / 9.555), 9)] += 1
+        data.insert(i, element)
+    #Returns wrong floor count, average error
+    return wrong_floor_count, float(error_total) / (len(data) - wrong_floor_count)
+
+def percent_same(L1, L2):
+    fullList = L1 + L2
+    unique = len(set(fullList))
+    total = len(fullList)
+    if total == 0:
+        return 1
+    return float(unique) / total
+
+def overlap_distance(aps1,aps2):
+    rVal = 0
+    for mac,ap1 in aps1.iteritems():
+        if mac in aps2:
+            strength1 = 10 ** (ap1.strength / 10)
+            strength2 = 10 ** (aps2[mac].strength / 10)
+            rVal = rVal + (strength1 - strength2) ** 2
+    return math.sqrt(rVal)
+
+
+def make_dist_func(alpha,beta,delta):
+    return lambda APS_1, APS_2:  alpha * percent_same(APS_1.keys(),APS_2.keys()) + beta * (1 - percent_same(APS_1.keys(),APS_2.keys())) + delta * overlap_distance(APS_1,APS_2)
+
+
+def error_rate(missed_floors, average_error):
+    return average_error
+
+def wrapper():
+    minError = sys.maxint
+    minAlpha = sys.maxint
+    minBeta = sys.maxint
+    minDleta = sys.maxint
+    data = get_locations()
+    normalize(data[:-1], data[-1].aps) # Hacky way to normalize all data
+    for i in range(100):
+        for j in range(100):
+            for k in range(100):
+                print "Round: {} - {} - {}".format(i, j, k)
+                alpha = i / 10.0 - 5
+                beta = j / 10.0 - 5
+                delta = k / 10.0 - 5
+                dist_func = make_dist_func(alpha,beta,delta)
+                (missed_floors, avgError) =LOOCV_func(data, dist_func)
+                if error_rate(missed_floors, avgError) < minError:
+                    minError = error_rate(missed_floors, avgError)
+                    minAlpha = alpha
+                    minBeta = beta
+                    minDleta = delta
+                    print "Same: {}, Diff: {}, Dist: {}. Current Diff: {}".format(alpha,beta,delta,round(minError,4))
+
+
 if __name__ == "__main__":
-    LOOCV()
+    wrapper()
