@@ -112,8 +112,9 @@ def weighted_avg(tuples, inverse):
     ### If we want the unweighted average:
     #return sum([t[0] for t in tuples]) / len(tuples)
     s = 0
-    if tuples[0][1] == 0:
-            return tuples[0][0]
+    for t in tuples:
+        if t[1] == 0:
+            return t[0]
     if inverse:
         weight_sum = sum([1 / t[1] for t in tuples])
     else:
@@ -370,7 +371,7 @@ def overlap_distance(aps1,aps2):
 
 
 def make_dist_func(alpha,beta,delta):
-    return lambda APS_1, APS_2:  alpha * percent_same(APS_1.keys(),APS_2.keys()) + beta * (1 - percent_same(APS_1.keys(),APS_2.keys())) + delta * overlap_distance(APS_1,APS_2)
+    return lambda APS_1, APS_2:  (alpha - beta) * percent_same(APS_1.keys(),APS_2.keys()) + alpha + delta * overlap_distance(APS_1,APS_2)
 
 
 def error_rate(missed_floors, average_error):
@@ -383,22 +384,30 @@ def wrapper():
     minDleta = sys.maxint
     data = get_locations()
     normalize(data[:-1], data[-1].aps) # Hacky way to normalize all data
-    for i in range(100):
-        for j in range(100):
-            for k in range(100):
-                print "Round: {} - {} - {}".format(i, j, k)
-                alpha = i / 10.0 - 5
-                beta = j / 10.0 - 5
-                delta = k / 10.0 - 5
+    wrapper_data = {}
+    wrapper_data["alpha"] = []
+    wrapper_data["beta"] = []
+    wrapper_data["delta"] = []
+    wrapper_data["avgError"] = []
+    wrapper_data["missed_floors"] = []
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                print "{} - {} - {}".format(i,j,k)
+                alpha = i / 1.0 - 5
+                beta = j / 1.0 - 5
+                delta = k / 1.0 - 5
                 dist_func = make_dist_func(alpha,beta,delta)
                 (missed_floors, avgError) =LOOCV_func(data, dist_func)
-                if error_rate(missed_floors, avgError) < minError:
-                    minError = error_rate(missed_floors, avgError)
-                    minAlpha = alpha
-                    minBeta = beta
-                    minDleta = delta
-                    print "Same: {}, Diff: {}, Dist: {}. Current Diff: {}".format(alpha,beta,delta,round(minError,4))
-
+                wrapper_data["alpha"].append(alpha)
+                wrapper_data["beta"].append(beta)
+                wrapper_data["delta"].append(delta)
+                wrapper_data["avgError"].append(avgError)
+                wrapper_data["missed_floors"].append(missed_floors)
+    fp = open("wrapper_data.json","w+")
+    import json
+    fp.write( json.dumps(wrapper_data,indent=4) )
+    fp.close()
 
 if __name__ == "__main__":
     wrapper()
