@@ -15,7 +15,7 @@ q2 = """select floor_id,accesspoint.location_id,x,y,direction, GROUP_CONCAT(MAC)
 
 
 def dump():
-    fp = open('access_points_test.json', 'w')
+    fp = open('../output/access_points_test.json', 'w')
 
     cur.execute(q2)
     access_points = cur.fetchall()
