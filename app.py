@@ -3,7 +3,7 @@
 
 from flask import Flask
 from flask import request
-from db import cur, DEBUG
+from db.db import cur, DEBUG
 import sys,os
 # from db import conn
 import json
@@ -54,7 +54,7 @@ def APS():
     #Takes a posted parameter of format:
     #{"lid":location_id, "APS":[ {"MAC":MAC, "strength":STRENGTH, "std": STD},... ]}
 
-    #TODO: CHANGE NAME OF THIS OR /aps 
+    #TODO: CHANGE NAME OF THIS OR /aps
     lid = -1
     try:
         data = request.get_json(force=True) #TODO: REMOVE FORCE IF POSSIBLe
@@ -68,7 +68,7 @@ def APS():
                 if 'std' in item:
                     APS[item['MAC']] = AccessPoint( (item['MAC'], float(item['strength']), float(item['std']), datetime.now(), 10) )
                 else:
-                   APS[item['MAC']] = AccessPoint( (item['MAC'], float(item['strength']), 0, datetime.now(), 10) ) 
+                   APS[item['MAC']] = AccessPoint( (item['MAC'], float(item['strength']), 0, datetime.now(), 10) )
             (x, y) = kNN(APS)
             cur.execute("""INSERT into demhoes (x,y, recorded)
                     VALUES ( %s, %s, NOW() )""", [x,y]) #UTC TIME

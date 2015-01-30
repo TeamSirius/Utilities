@@ -1,7 +1,11 @@
 
 import pymysql
+import os
 #insert your sql information here
-conn = pymysql.connect(host='seniorindoorlocation.chopksxzy4yo.us-east-1.rds.amazonaws.com', db='sirius', user='wormtail', passwd='hamsandwich')
+password = os.environ.get('SIRIUS_PASSWORD')
+if password is None:
+    raise Exception('Could not get database password')
+conn = pymysql.connect(host='seniorindoorlocation.chopksxzy4yo.us-east-1.rds.amazonaws.com', db='sirius', user='wormtail', passwd=password)
 conn.autocommit(True)
 
 cur = conn.cursor()

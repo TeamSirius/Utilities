@@ -1,6 +1,6 @@
 from scipy.stats import ttest_ind,norm
 import scipy
-from db import cur
+from db.db import cur
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -61,7 +61,7 @@ def intersection(listas):
 	return list(intersection_r(listas))
 
 def intersection_r(listas):
-	return set(listas[0]).intersection(*listas[1:]) 
+	return set(listas[0]).intersection(*listas[1:])
 
 def main():
 	count = 0
@@ -77,7 +77,7 @@ def main():
 			GROUP_CONCAT(strength) as strength_list,
 			GROUP_CONCAT(std_dev) as std_list from accesspoint
 	 		join location on location.id=accesspoint.location_id
-	 		where location.id in (%s,%s,%s,%s,%s) 
+	 		where location.id in (%s,%s,%s,%s,%s)
 	 		group by accesspoint.location_id,x,y,direction""", id_list )
 		all_macs = []
 		for row in cur.fetchall():
@@ -133,7 +133,7 @@ def main():
 		for i,(k,v) in enumerate(sorted_items):
 			d = [names[str(k)].ljust(10)]
 			for j,(key,val) in enumerate(sorted_items):
-				diff = difference(val,v) 
+				diff = difference(val,v)
 				sum_data[i][j] += diff
 				d.append(str( round(diff ,2) ).rjust(10) )
 			print ' '.join(d)

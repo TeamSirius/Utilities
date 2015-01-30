@@ -1,7 +1,7 @@
 # This is a simple web application to handle get and post requests
 # related to the indoor mapping project
 
-from db import cur
+from db.db import cur
 # from db import conn
 import json
 

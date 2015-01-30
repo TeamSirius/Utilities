@@ -20,7 +20,7 @@
 import Tkinter, os, math, requests, json
 from PIL import Image, ImageTk
 from sys import argv,exit
-from db import cur,SERVER_URL,DEBUG
+from db.db import cur,SERVER_URL,DEBUG
 
 class Location(object):
     def __init__(self, x, y, name, verbose):
@@ -108,7 +108,7 @@ class Grid(object):
         YB = max(y1,y2)
 
         width = XR - XL # inverted because of pixel map structure
-        height = YB - YT 
+        height = YB - YT
         num_across = max(1, int(math.ceil(width // density)))
         num_high = max(1, int(math.ceil(height // density)))
         x_justification = ((width - (density * (num_across - 1))) / 2) + XL
@@ -123,7 +123,7 @@ class Grid(object):
                 self.locs.append(Location(x_coord, y_coord, name + addage, verbose + addage))
 
 density = 30
-num_vertices = 1 
+num_vertices = 1
 builder_function = Point
 
 points = []
@@ -166,7 +166,7 @@ def main(argv, debug):
 
     canvas = Tkinter.Canvas(frame, width=image.size[0], height=image.size[1])
     canvas.pack()
-    
+
     image_tk = ImageTk.PhotoImage(image)
     oncanvas = canvas.create_image(image.size[0]//2, image.size[1]//2, image=image_tk)
 
@@ -174,7 +174,7 @@ def main(argv, debug):
         global points
         global delete_list
 
-        radius = 2 #point radius  
+        radius = 2 #point radius
         new_canvas = canvas.create_oval(x - radius, y - radius, x + radius, y + radius, fill=color)
         points.append( (x,y) )
         delete_list.append(new_canvas)
@@ -212,7 +212,7 @@ def main(argv, debug):
         global builder_function
         num_vertices = 2
         builder_function = Line
-        reset()  
+        reset()
 
     def rectangle_mode():
         global num_vertices

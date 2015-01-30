@@ -7,20 +7,20 @@
 #       - Draw Point on Floor Plan File
 
 from PIL import Image, ImageDraw
-from db import cur
-import json, os
+from db.db import cur
+import os
 
-halligan_two = os.path.join(os.getcwd(), 'Halligan_2.png')
 
 def main():
+    halligan_two = os.path.join(os.getcwd(), 'Halligan_2.png')
     cur.execute("""SELECT x,y from demhoes order by id desc limit 1 """)
     row = cur.fetchone()
-    if row != None:
+    if row is not None:
         x = int(float(row[0]))
         y = int(float(row[1]))
 
     image = Image.open(halligan_two)
-    
+
     radius = 5 # point radius
     draw_image = ImageDraw.Draw(image)
     draw_image.ellipse((x-radius,y-radius,x+radius,y+radius), fill='blue',outline='red')
