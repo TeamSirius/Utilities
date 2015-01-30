@@ -5,13 +5,20 @@
 from collections import Counter
 import sets
 import math
-import json
-from pprint import pprint
 import sys
-from db import cur
+import os
+from scripts.db.db import Database
 
 # Minimum normalized RSSI value detected; used as "not detected" value
 MIN_DETECTED = 0
+
+password = os.environ.get('SIRIUS_PASSWORD')
+if password is None:
+    raise Exception('No database password available')
+
+db = Database(password)
+
+cur = db.get_cur()
 
 # Access Point class
 class AccessPoint(object):
@@ -84,9 +91,9 @@ class Location(object):
 
 def similarity(ap1, ap2):
     from scipy.stats import ttest_ind,norm
-    return 1 - ttest_ind( 
-	    norm.rvs(loc=ap1.strength,scale=ap1.std,size=ap1.sample_size), 
-	    norm.rvs(loc=ap2.strength,scale=ap2.std,size=ap2.sample_size), 
+    return 1 - ttest_ind(
+	    norm.rvs(loc=ap1.strength,scale=ap1.std,size=ap1.sample_size),
+	    norm.rvs(loc=ap2.strength,scale=ap2.std,size=ap2.sample_size),
 	    equal_var = False)[1]
 
 # Given a set of mac_ids and two dictionaries of AccessPoints, calculates the
@@ -105,7 +112,7 @@ def euclidean(keys, aps1, aps2):
         rVal = rVal + (strength1 - strength2) ** 2
     return math.sqrt(rVal)
 
- 
+
         # Given a list of tuples where t[0] is the value and t[1] is the distance,
 # returns a weighted average of the values
 def weighted_avg(tuples, inverse):

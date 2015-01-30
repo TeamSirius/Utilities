@@ -3,10 +3,12 @@
 
 from flask import Flask
 from flask import request
-from db.db import cur, DEBUG
-import sys,os
+from scripts.db.db import Database
+import sys
+import os
 # from db import conn
 import json
+
 
 # import pymysql
 
@@ -15,6 +17,13 @@ app = Flask(__name__)
 # The error response json
 ERROR_RETURN = json.dumps({'error': "Error"})
 SUCCESS_RETURN = json.dumps({'success': "Success"})
+
+password = os.environ.get('SIRIUS_PASSWORD')
+if password is None:
+    raise Exception('No password available')
+
+db = Database(password)
+cur = db.get_cur()
 
 def log(msg):
     sys.stderr.write("{}\n".format(msg))
