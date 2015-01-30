@@ -17,7 +17,7 @@ q2 = """select floor_id,accesspoint.location_id,x,y,direction, GROUP_CONCAT(MAC)
 def dump(password, output_file):
     db = Database(password)
     cur = db.get_cur()
-    fp = open('../output/{}'.format(output_file), 'w')
+    fp = open('output/{}'.format(output_file), 'w+')
 
     cur.execute(q2)
     access_points = cur.fetchall()

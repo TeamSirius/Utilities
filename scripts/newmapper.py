@@ -144,7 +144,7 @@ def file_name(file_path):
     head, tail = ntpath.split(file_path)
     return tail or ntpath.basename(head)
 
-def main(image_file, debug):
+def begin_mapping(image_file, debug):
     image = Image.open(image_file)
 
     if not debug:
@@ -295,4 +295,4 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--debug', action='store_true', help='Debug')
 
     args = parser.parse_args()
-    main(args.image_file, args.debug)
+    begin_mapping(args.image_file, args.debug)

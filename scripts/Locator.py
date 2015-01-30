@@ -15,7 +15,7 @@ import argparse
 def Launch_Locator(password):
     db = Database(password)
     cur = db.get_cur()
-    halligan_two = os.path.join(os.getcwd(),  'Halligan_2.png')
+    halligan_two = os.path.join('static_files/',  'Halligan_2.png')
     cur.execute("""SELECT x, y from demhoes order by id desc limit 1 """)
     row = cur.fetchone()
     if row is not None:
