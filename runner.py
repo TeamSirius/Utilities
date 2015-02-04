@@ -8,14 +8,19 @@ def print_options(options):
     for indx, item in enumerate(options):
         print (message.format(indx, item))
 
+    print (message.format('q', 'Quit'))
+
     return raw_input('Your selection: ')
 
 
 def main(args):
     options = ['Locate last point', 'Analyze DB', 'Dump DB', 'Map New Points']
     while True:
+        selection = print_options(options)
+        if selection == 'q':
+            return
         try:
-            selected = int(print_options(options))
+            selected = int(selection)
         except ValueError:
             selected = -1
 
