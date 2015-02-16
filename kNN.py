@@ -8,6 +8,7 @@ import math
 import sys
 import os
 from scripts.db.db import Database
+from math import isinf
 
 # Minimum normalized RSSI value detected; used as "not detected" value
 MIN_DETECTED = 0
@@ -127,6 +128,9 @@ def weighted_avg(tuples, inverse):
     else:
         weight_sum = sum([t[1] for t in tuples])
     for t in tuples:
+        if isinf(t[1]) or weight_sum == 0:
+            print t[0]
+            return t[0]
         if inverse:
             s += t[0] * (1 / t[1]) / weight_sum
         else:
