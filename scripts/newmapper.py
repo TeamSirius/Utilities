@@ -17,10 +17,16 @@
 
 # Changing Modes before logging deletes unlogged points
 
-import Tkinter, os, math, requests, json
+import Tkinter
+import math
+import requests
+import json
 from PIL import Image, ImageTk
-from sys import argv,exit
-from db.db import cur,SERVER_URL,DEBUG
+from sys import exit
+from db.db import SERVER_URL, DEBUG
+import ntpath
+import argparse
+
 
 class Location(object):
     def __init__(self, x, y, name, verbose):
@@ -38,7 +44,8 @@ class Location(object):
         payload['floor_id'] = floor_id
         for i in range(4):
             payload['d'] = i * 90
-            r = requests.post(SERVER_URL + "location", data=json.dumps(payload))
+            requests.post(SERVER_URL + "location", data=json.dumps(payload))
+
 
 class Point(object):
     def __init__(self, point_list, name, verbose):
@@ -46,19 +53,20 @@ class Point(object):
         self.locs = []
         self.locs.append(Location(x, y, name, verbose))
 
+
 class Line(object):
     def __init__(self, point_list, name, verbose):
         x1, y1 = point_list[0]
         x2, y2 = point_list[1]
         num_points = int(raw_input('Number of points in line: '))
 
-        XL = min(x1,x2)
-        XR = max(x1,x2)
-        YT = min(y1,y2)
-        YB = max(y1,y2)
+        XL = min(x1, x2)
+        XR = max(x1, x2)
+        YT = min(y1, y2)
+        YB = max(y1, y2)
 
         width = XR - XL
-        height = YB - YT # inverted because of pixel map structure
+        height = YB - YT  # inverted because of pixel map structure
         x_step = width // (num_points - 1)
         y_step = height // (num_points - 1)
 
@@ -73,20 +81,21 @@ class Line(object):
         for i in range(num_points):
             if width > height:
                 self.locs.append(Location(XL + (i * x_step), YB,
-                    name + str(unichr(ord('A') + i)),verbose))
+                    name + str(unichr(ord('A') + i)), verbose))
             else:
                 self.locs.append(Location(XL, YT + (i * y_step),
                     name + str(unichr(ord('A') + i)), verbose))
+
 
 class Rectangle(object):
     def __init__(self, point_list, name, verbose):
         x1, y1 = point_list[0]
         x2, y2 = point_list[1]
 
-        XL = min(x1,x2)
-        XR = max(x1,x2)
-        YT = min(y1,y2)
-        YB = max(y1,y2)
+        XL = min(x1, x2)
+        XR = max(x1, x2)
+        YT = min(y1, y2)
+        YB = max(y1, y2)
         XCT = (XL + XR) // 2
         YCT = (YB + YT) // 2
 
@@ -97,17 +106,18 @@ class Rectangle(object):
         self.locs.append(Location(XL, YB, name + "_BL", verbose + " Bottom Left"))
         self.locs.append(Location(XCT, YCT, name + "_CT", verbose + " Center"))
 
+
 class Grid(object):
     def __init__(self, point_list, name, verbose):
         x1, y1 = point_list[0]
         x2, y2 = point_list[1]
 
-        XL = min(x1,x2)
-        XR = max(x1,x2)
-        YT = min(y1,y2)
-        YB = max(y1,y2)
+        XL = min(x1, x2)
+        XR = max(x1, x2)
+        YT = min(y1, y2)
+        YB = max(y1, y2)
 
-        width = XR - XL # inverted because of pixel map structure
+        width = XR - XL  # inverted because of pixel map structure
         height = YB - YT
         num_across = max(1, int(math.ceil(width // density)))
         num_high = max(1, int(math.ceil(height // density)))
@@ -130,14 +140,15 @@ points = []
 delete_list = []
 locations = [] # list of things to post at end
 
-def main(argv, debug):
-    if len(argv) != 2:
-        print "Usage: python build_locations filename"
-        exit(1)
-    image = Image.open(argv[1])
+def file_name(file_path):
+    head, tail = ntpath.split(file_path)
+    return tail or ntpath.basename(head)
+
+def begin_mapping(image_file, debug):
+    image = Image.open(image_file)
 
     if not debug:
-        payload = {'path': argv[1]}
+        payload = {'path': file_name(image_file)}
         try:
             r = requests.get(SERVER_URL + "floor", params=payload)
             found_fid = False
@@ -176,7 +187,7 @@ def main(argv, debug):
 
         radius = 2 #point radius
         new_canvas = canvas.create_oval(x - radius, y - radius, x + radius, y + radius, fill=color)
-        points.append( (x,y) )
+        points.append( (x, y) )
         delete_list.append(new_canvas)
 
     def add_point(event):
@@ -259,11 +270,11 @@ def main(argv, debug):
         log_btn.pack_forget()
         canvas.bind("<Button-1>", add_point)
 
-    point_btn = Tkinter.Button(frame, text="Point",command=point_mode)
-    line_btn = Tkinter.Button(frame, text="Line",command=line_mode)
-    rectangle_btn = Tkinter.Button(frame, text="Rectangle",command=rectangle_mode)
-    grid_btn = Tkinter.Button(frame, text="Grid",command=grid_mode)
-    log_btn = Tkinter.Button(frame, text="Log",command=log)
+    point_btn = Tkinter.Button(frame, text="Point", command=point_mode)
+    line_btn = Tkinter.Button(frame, text="Line", command=line_mode)
+    rectangle_btn = Tkinter.Button(frame, text="Rectangle", command=rectangle_mode)
+    grid_btn = Tkinter.Button(frame, text="Grid", command=grid_mode)
+    log_btn = Tkinter.Button(frame, text="Log", command=log)
 
     point_btn.pack(side='left')
     line_btn.pack(side='left')
@@ -279,5 +290,9 @@ def main(argv, debug):
             loc.save(fid)
 
 if __name__ == '__main__':
-    debug = False
-    main(argv, debug)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('image_file', help='The image to work with')
+    parser.add_argument('-d', '--debug', action='store_true', help='Debug')
+
+    args = parser.parse_args()
+    begin_mapping(args.image_file, args.debug)

@@ -3,10 +3,12 @@
 
 from flask import Flask
 from flask import request
-from db.db import cur, DEBUG
-import sys,os
+from scripts.db.db import Database
+import sys
+import os
 # from db import conn
 import json
+
 
 # import pymysql
 
@@ -15,6 +17,13 @@ app = Flask(__name__)
 # The error response json
 ERROR_RETURN = json.dumps({'error': "Error"})
 SUCCESS_RETURN = json.dumps({'success': "Success"})
+
+password = os.environ.get('SIRIUS_PASSWORD')
+if password is None:
+    raise Exception('No password available')
+
+db = Database(password)
+cur = db.get_cur()
 
 def log(msg):
     sys.stderr.write("{}\n".format(msg))
@@ -69,10 +78,10 @@ def APS():
                     APS[item['MAC']] = AccessPoint( (item['MAC'], float(item['strength']), float(item['std']), datetime.now(), 10) )
                 else:
                    APS[item['MAC']] = AccessPoint( (item['MAC'], float(item['strength']), 0, datetime.now(), 10) )
-            (x, y) = kNN(APS)
-            cur.execute("""INSERT into demhoes (x,y, recorded)
-                    VALUES ( %s, %s, NOW() )""", [x,y]) #UTC TIME
-            return json.dumps({'success': {"x" : x, "y" : y}})
+            (x, y,floor) = kNN(APS)
+            # cur.execute("""INSERT into demhoes (x,y, recorded)
+            #         VALUES ( %s, %s, NOW() )""", [x,y]) #UTC TIME
+            return json.dumps({'success': {"x" : x, "y" : y, "floor":floor}})
         else:
             cur.execute("""SELECT count(*) from accesspoint where location_id=%s""",[lid])
             count = cur.fetchone()[0]

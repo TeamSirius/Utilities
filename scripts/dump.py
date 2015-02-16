@@ -1,8 +1,8 @@
 # This is a simple web application to handle get and post requests
 # related to the indoor mapping project
 
-from db.db import cur
-# from db import conn
+from db.db import Database
+import argparse
 import json
 
 q = """select floor_id,accesspoint.location_id,x,y,direction, GROUP_CONCAT(MAC) as MAC_list,GROUP_CONCAT(strength) as strength_list from accesspoint
@@ -14,8 +14,10 @@ q2 = """select floor_id,accesspoint.location_id,x,y,direction, GROUP_CONCAT(MAC)
   group by accesspoint.location_id,x,y,direction"""
 
 
-def dump():
-    fp = open('access_points_test.json', 'w')
+def dump(password, output_file):
+    db = Database(password)
+    cur = db.get_cur()
+    fp = open('output/{}'.format(output_file), 'w+')
 
     cur.execute(q2)
     access_points = cur.fetchall()
@@ -29,12 +31,13 @@ def dump():
             'y': f[3],
             'direction': f[4],
             'macs': f[5].split(','),
-            'rss': map(int, f[6].split(','))
+            'rss': map(float, f[6].split(','))
         }
         print json.dumps(msg)
         res.append(msg)
     json.dump(res, fp)
     fp.close()
+
 
 
 # json looks like:
@@ -51,4 +54,8 @@ def dump():
 # ]
 
 if __name__ == '__main__':
-    dump()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('db_password', help='The database password')
+    parser.add_argument('output_file', help='The file to dump to')
+    args = parser.parse_args()
+    dump(args.db_password, args.output_file)
