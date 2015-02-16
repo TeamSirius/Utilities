@@ -1,12 +1,59 @@
 from sys import argv,stderr,exit
 from PIL import Image, ImageTk
 import math
+import os
 from random import random
 import Tkinter, requests, json
 # from db.db import cur,SERVER_URL,DEBUG
 
 NUM_TEST_POINTS = 20 # Number of test points we want
 NUM_CANDIDATES = 200 # Number of attempts per test point chosen
+SERVER_URL = "http://localhost:5000/"
+
+
+def counter():
+    """Creates a counter instance"""
+    x = [0]
+    def c():
+        x[0] += 1
+        return x[0]
+
+def get_floor_id(imageName):
+    """Given an image name will return a floor id from the database"""
+    try:
+        imagePath = os.path.join(os.getcwd(), "test_" + imageName)
+        payload = {'path': "test_" + imageName}
+        r = requests.get(SERVER_URL + "floor", params=payload)
+        found_fid = False
+        fid = 1
+        if r:
+            json_r = r.json()
+            if 'error' not in json_r:
+                found_fid = True
+                fid = int(json_r['floor_id'])
+        if not found_fid:
+            payload['building'] = raw_input("Building: ")
+            payload['floor_number'] = int(raw_input("floor_number: "))
+            r = requests.post(SERVER_URL + "floor", data=json.dumps(payload))
+            json_r = r.json()
+            if 'error' in json_r:
+                raise "Server Error"
+            fid = int(json_r['floor_id'])
+    except:
+        exit("Error finding floor id")
+    return fid
+
+def add_point(fid, x, y, c):
+    """Given a floor id, x,y and counter will create a point in the database"""
+    n = c()
+    keys = ['x', 'y', 'd', 'name', 'verbose', 'floor_id']
+    data = {"x":x,"y":y,"d":0,
+    "name":"Pt {}".format(n),
+    "verbose":"Point {}".format(n),
+    "floor_id":fid }
+    r = requests.post(SERVER_URL + "location", data=json.dumps(data))
+    print r.text
+
 
 # Location Object
 class Location(object):
@@ -119,6 +166,7 @@ def main(argv, debug):
     if len(argv) != 2:
         print "Usage: python build_locations filename"
         exit(1)
+    fid = get_floor_id(argv[1])
     image = Image.open(argv[1])
 
     window = Tkinter.Tk()
@@ -161,8 +209,10 @@ def main(argv, debug):
         height = image.size[1]
         test_points = getTestPointList(rectangles, width, height)
 
+        c = counter()
         for test_point in test_points:
             draw_point(test_point.x, test_point.y, 'green')
+            add_point(fid,test_point.x, test_point.y,c)
 
     def exit():
         window.destroy()
