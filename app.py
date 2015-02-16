@@ -78,10 +78,10 @@ def APS():
                     APS[item['MAC']] = AccessPoint( (item['MAC'], float(item['strength']), float(item['std']), datetime.now(), 10) )
                 else:
                    APS[item['MAC']] = AccessPoint( (item['MAC'], float(item['strength']), 0, datetime.now(), 10) )
-            (x, y) = kNN(APS)
-            cur.execute("""INSERT into demhoes (x,y, recorded)
-                    VALUES ( %s, %s, NOW() )""", [x,y]) #UTC TIME
-            return json.dumps({'success': {"x" : x, "y" : y}})
+            (x, y,floor) = kNN(APS)
+            # cur.execute("""INSERT into demhoes (x,y, recorded)
+            #         VALUES ( %s, %s, NOW() )""", [x,y]) #UTC TIME
+            return json.dumps({'success': {"x" : x, "y" : y, "floor":floor}})
         else:
             cur.execute("""SELECT count(*) from accesspoint where location_id=%s""",[lid])
             count = cur.fetchone()[0]
