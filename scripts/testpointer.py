@@ -17,6 +17,7 @@ def counter():
     def c():
         x[0] += 1
         return x[0]
+    return c
 
 def get_floor_id(imageName):
     """Given an image name will return a floor id from the database"""
@@ -43,7 +44,7 @@ def get_floor_id(imageName):
         exit("Error finding floor id")
     return fid
 
-def add_point(fid, x, y, c):
+def add_point_to_database(fid, x, y, c):
     """Given a floor id, x,y and counter will create a point in the database"""
     n = c()
     keys = ['x', 'y', 'd', 'name', 'verbose', 'floor_id']
@@ -212,7 +213,7 @@ def main(argv, debug):
         c = counter()
         for test_point in test_points:
             draw_point(test_point.x, test_point.y, 'green')
-            add_point(fid,test_point.x, test_point.y,c)
+            add_point_to_database(fid,test_point.x, test_point.y,c)
 
     def exit():
         window.destroy()
