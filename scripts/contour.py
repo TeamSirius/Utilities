@@ -2,6 +2,10 @@ from db.db import Database
 from sys import argv, exit
 import os
 from PIL import Image
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+import matplotlib.pyplot as plt
+
 
 """
 
@@ -26,7 +30,22 @@ db = Database(password)
 cur = db.get_cur()
 
 path_offset = "../Static_Files/" # Path offset from cwd to image directory
-    
+
+def block_average(data,row,col,BLOCK_SIZE,width,height):
+    """averages the values in data in a block of side size BLOCK_SIZE."""
+    r = BLOCK_SIZE // 2
+    s = 0
+    counter = 0
+    for i in range( max(0,row - r), min( row + r ,height - 1) ):
+        for j in range( max(0,col - r), min( col + r ,width - 1) ):
+            if data[i][j] != 0:
+                s += data[i][j]
+                counter += 1
+    if counter == 0:
+        return -100
+    return float(s) / counter
+
+ 
 def make_csv(data,height):
     """Takes the given data and builds the csv string. 
     This function DOES NOT save the file. The expected input data
@@ -35,10 +54,12 @@ def make_csv(data,height):
     image orientation."""
     xs = sorted(set([item[0] for item in data]))
     ys = sorted(set([height - item[1] for item in data]))
+    Z = [item[2] for item in data]
+    min_z = 0
     #Flips ys
     num_X = len(xs)
     num_Y = len(ys)
-    zs = [[0 for j in range(num_X)] for i in range(num_Y)]
+    zs = [[min_z for j in range(num_X)] for i in range(num_Y)]
         #indexed row column
     lines = []
     lines.append("{},{}".format(num_Y,num_X))
@@ -52,8 +73,17 @@ def make_csv(data,height):
         lines.append(str(x))
     for (x,y,z) in data:
         zs[ y_pos[y] ][ x_pos[x] ] = z
+    new_zs = [[min_z for j in range(num_X)] for i in range(num_Y)]
+    BLOCK_SIZE = 6
+    for row in range(num_Y):
+        for col in range(num_X):
+            new_zs[row][col] = block_average(zs,row,col,BLOCK_SIZE, num_X,num_Y)
     for line in zs:
         lines.append( ','.join( map(str,line) ) )
+    plt.contourf(xs,ys,new_zs)
+    plt.show()
+
+
     return '\n'.join(lines)
 
 
@@ -84,7 +114,11 @@ def main():
         exit("{}: Image not found at {}".format(argv[0],full_path))
     width, height = img.size
     #building APS
-    cur.execute("""select x,y,count(*) from location 
+    # cur.execute("""select x,y,count(*) from location 
+    #     join accesspoint on location.id=location_id
+    #     where floor_id=%s
+    #     group by location.id""",[floorId])
+    cur.execute("""select x,y,max(strength) from location 
         join accesspoint on location.id=location_id
         where floor_id=%s
         group by location.id""",[floorId])
