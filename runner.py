@@ -41,7 +41,12 @@ def main(args):
     elif selected == 3:
         msg = 'Path to image file to work with: '
         input_file = raw_input(msg)
-        newmapper.begin_mapping(input_file, False)
+        username = raw_input('Username for website: ')
+        password = raw_input('Password for website: ')
+        newmapper.begin_mapping(input_file,
+                                False,
+                                username=username,
+                                password=password)
 
 
 if __name__ == '__main__':

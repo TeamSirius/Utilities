@@ -26,7 +26,10 @@ from sys import exit
 from db.db import SERVER_URL, DEBUG
 import ntpath
 import argparse
+import sys
+from server_interface import ServerInterface
 
+server_interface = None
 
 class Location(object):
     def __init__(self, x, y, name, verbose):
@@ -35,16 +38,20 @@ class Location(object):
         self.name = name
         self.verbose = verbose
 
-    def save(self, floor_id):
-        payload = {}
-        payload['x'] = self.x
-        payload['y'] = self.y
-        payload['name'] = self.name
-        payload['verbose'] = self.verbose
-        payload['floor_id'] = floor_id
-        for i in range(4):
-            payload['d'] = i * 90
-            requests.post(SERVER_URL + "location", data=json.dumps(payload))
+    def save(self, floor_identifier):
+        global server_interface
+        payload = {
+            'verbose_name': self.verbose,
+            'short_name': self.name,
+            'x_coordinate': self.x,
+            'y_coordinate': self.y,
+            'floor': floor_identifier
+        }
+
+        for i in xrange(4):
+            payload['direction'] = i * 90
+            server_interface.post(ServerInterface.LOCATION,
+                                  payload)
 
 
 class Point(object):
@@ -144,32 +151,81 @@ def file_name(file_path):
     head, tail = ntpath.split(file_path)
     return tail or ntpath.basename(head)
 
-def begin_mapping(image_file, debug):
+
+def get_floor_information():
+    """ Get the name of the building and floor information from the user
+        If a non-integer floor number is entered, keep asking"""
+
+    building_name = raw_input("Building: ")
+    floor_number = -1
+    while True:
+        try:
+            floor_number = int(raw_input("Floor Number: "))
+            break
+        except ValueError:
+            print >> sys.stderr, "Not a number. Try again"
+
+    return building_name, floor_number
+
+def get_floor_identifier(image_file):
+    global server_interface
+    building_name, floor_number = get_floor_information()
+    get_payload = {
+        'building_name__iexact': building_name.lower(),
+        'floor_number': floor_number
+    }
+
+    worked, data = server_interface.get_single_item(ServerInterface.FLOOR,
+                                                    get_payload)
+
+    if not worked:
+        with open(image_file, 'rb') as image:
+            post_payload = {
+                'floor_number': floor_number,
+                'building_name': building_name
+            }
+
+            files = {
+                'image': image
+            }
+
+            data = server_interface.post_with_files(ServerInterface.FLOOR,
+                                                    post_payload,
+                                                    files)
+    return data['resource_uri']
+
+
+def begin_mapping(image_file, debug, username='', password=''):
+    global server_interface
+    server_interface = ServerInterface(username, password)
     image = Image.open(image_file)
 
+    # if not debug:
+    #     payload = {'path': file_name(image_file)}
+    #     try:
+    #         r = requests.get(SERVER_URL + "floor", params=payload)
+    #         found_fid = False
+    #         fid = 1
+    #         if DEBUG:
+    #             print r.text
+    #         if r:
+    #             json_r = r.json()
+    #             if 'error' not in json_r:
+    #                 found_fid = True
+    #                 fid = int(json_r['floor_id'])
+    #         if not found_fid:
+    #             payload['building'] = building_name
+    #             payload['floor_number'] = floor_number
+    #             r = requests.post(SERVER_URL + "floor", data=json.dumps(payload))
+    #             json_r = r.json()
+    #             if 'error' in json_r:
+    #                 raise "Server Error"
+    #             fid = int(json_r['floor_id'])
+    #     except:
+    #         exit("Error finding floor id")
     if not debug:
-        payload = {'path': file_name(image_file)}
-        try:
-            r = requests.get(SERVER_URL + "floor", params=payload)
-            found_fid = False
-            fid = 1
-            if DEBUG:
-                print r.text
-            if r:
-                json_r = r.json()
-                if 'error' not in json_r:
-                    found_fid = True
-                    fid = int(json_r['floor_id'])
-            if not found_fid:
-                payload['building'] = raw_input("Building: ")
-                payload['floor_number'] = int(raw_input("floor_number: "))
-                r = requests.post(SERVER_URL + "floor", data=json.dumps(payload))
-                json_r = r.json()
-                if 'error' in json_r:
-                    raise "Server Error"
-                fid = int(json_r['floor_id'])
-        except:
-            exit("Error finding floor id")
+        floor_identifier = get_floor_identifier(image_file)
+        # print floor_identifier
 
     window = Tkinter.Tk()
     frame = Tkinter.Frame(window)
@@ -270,6 +326,7 @@ def begin_mapping(image_file, debug):
         log_btn.pack_forget()
         canvas.bind("<Button-1>", add_point)
 
+
     point_btn = Tkinter.Button(frame, text="Point", command=point_mode)
     line_btn = Tkinter.Button(frame, text="Line", command=line_mode)
     rectangle_btn = Tkinter.Button(frame, text="Rectangle", command=rectangle_mode)
@@ -287,12 +344,14 @@ def begin_mapping(image_file, debug):
     command = raw_input("Save Points? [Y/N] ")
     if command == 'Y':
         for loc in locations:
-            loc.save(fid)
+            loc.save(floor_identifier)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('image_file', help='The image to work with')
+    parser.add_argument('username', help='Your username for the server')
+    parser.add_argument('password', help='Your password for the server')
     parser.add_argument('-d', '--debug', action='store_true', help='Debug')
 
     args = parser.parse_args()
-    begin_mapping(args.image_file, args.debug)
+    begin_mapping(args.image_file, args.debug, args.username, args.password)

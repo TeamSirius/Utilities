@@ -12,8 +12,8 @@ import sys
 SERVER_URL = "http://mapbuilder.herokuapp.com/"
 SERVER_URL = "http://localhost:5000/"
 
-floorPaths = ["","Static_Files/Halligan_2.png","Static_Files/Halligan_1.png"
-                ,"Static_Files/Halligan_2.png","Static_Files/Halligan_1.png"]
+floorPaths = ["","../Static_Files/Halligan_2.png","Static_Files/Halligan_1.png"
+                ,"../Static_Files/Halligan_2.png","Static_Files/Halligan_1.png"]
         #Ordered by floor index
 
 macIndex = 1

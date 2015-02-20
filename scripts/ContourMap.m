@@ -1,0 +1,10 @@
+function A = ContourMap(fname,saveName)
+    M = csvread(fname,0,0,[0,0,0,1])
+    R = M(1)
+    C = M(2)
+    Y_Axis = csvread(fname,1,0,[1,0,R,0])
+    X_Axis = csvread(fname,1 + R,0,[1+ R,0,R + C,0])
+    Z = csvread(fname,1 + R+C,0)
+    contourf(X_Axis,Y_Axis,Z)
+    saveas(gcf,saveName,'jpg') 
+end
