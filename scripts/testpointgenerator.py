@@ -3,9 +3,9 @@
 #
 # Purpose:  This script generates random test points using Mitchel's Best Candidate-II
 #           algorithm. These points are displayed on the input image.
-#           
+#
 #           The user can also designate rectangles for those random points to be
-#           generated within. 
+#           generated within.
 #
 #           We use this utility to create random points within areas of a building we
 #           have mapped.
@@ -26,6 +26,7 @@ NUM_TEST_POINTS = 20  # Number of test points we want
 NUM_CANDIDATES = 200  # Number of attempts per test point chosen
 SERVER_URL = "http://localhost:5000/"
 
+
 class Point(object):
 
     """ Point Object """
@@ -43,7 +44,6 @@ class Point(object):
                 "verbose": "Point {}".format(n),
                 "floor_id": fid}
         r = requests.post(SERVER_URL + "location", data=json.dumps(data))
-        # print r.text
 
 class Rectangle(object):
 
@@ -63,9 +63,9 @@ class Rectangle(object):
         self.YB = max(p1.y, p2.y)
 
     def corners(self):
-        return [Point(self.XL , self.YT), 
-                Point(self.XR, self.YT), 
-                Point(self.XR, self.YB), 
+        return [Point(self.XL, self.YT),
+                Point(self.XR, self.YT),
+                Point(self.XR, self.YB),
                 Point(self.XL, self.YB)]
 
     def contains(self, point):
@@ -76,6 +76,7 @@ class Rectangle(object):
         else:
             return False
 
+
 def getRandomPoints():
     """ Gets and returns a list of random Points """
     test_points = []
@@ -83,6 +84,7 @@ def getRandomPoints():
         new_point = bestCandidate(test_points)
         test_points.append(new_point)
     return test_points
+
 
 def bestCandidate(test_points):
     """ Runs Mitchell's Best-Candidate II Algorithm to generate a dispersed random Point """
@@ -95,6 +97,7 @@ def bestCandidate(test_points):
         if d > bestDistance:
             best = c
     return best
+
 
 def getCandidatePoint():
     """ Returns a random Point in the image within at least one of the rectangles """
@@ -112,9 +115,10 @@ def getCandidatePoint():
     stderr.write("rectangle space too small to find point\n")
     exit()
 
+
 def findClosest(test_points, point):
     """ Given a set of Points, and a point returns the closest Point to the point """
-    min_distance = math.sqrt(APP['dims']['w']**2 + APP['dims']['h']**2)
+    min_distance = math.sqrt(APP['dims']['w'] ** 2 + APP['dims']['h'] ** 2)
     closest = None
     for test_point in test_points:
         cur_distance = distance(point, test_point)
@@ -127,15 +131,18 @@ def findClosest(test_points, point):
 # Misc Utility Functions Below
 #--------------------------------
 
+
 def distance(a, b):
     """ Returns the distance between the given two Points """
     dx = a.x - b.x
     dy = a.y - b.y
     return math.sqrt(dx * dx + dy * dy)
 
+
 def rand(minimum, maximum):
     """ Returns a random number between minimum and maximum """
     return random() * (maximum - minimum) + minimum
+
 
 def counter():
     """Creates a counter instance"""
@@ -146,10 +153,12 @@ def counter():
         return x[0]
     return
 
+
 def RandomPoint():
     """ generates a Point object within the image space """
     global APP
     return Point(rand(0, APP['dims']['w']), rand(0, APP['dims']['h']))
+
 
 def get_floor_id(imageName):
     """Given an image name will return a floor id from the database. 
@@ -180,6 +189,7 @@ def get_floor_id(imageName):
 #--------------------------------
 # TKinter Application Code Below
 #--------------------------------
+
 
 def initializeApp(image_path):
     """ Initializes data for app Binds tkinter buttons """
@@ -285,6 +295,7 @@ def done():
         if not debug:
             point.save(fid, c)
 
+
 def reset():
     """ deletes unlogged points from the canvas """
     global APP
@@ -293,6 +304,7 @@ def reset():
 
     APP['points'] = []
     APP['canvas_list'] = []
+
 
 def main(argv, debug):
     if len(argv) != 2:
