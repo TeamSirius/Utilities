@@ -5,16 +5,12 @@ from PIL import Image
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 import matplotlib.pyplot as plt
+import StringIO
+
+#RESIZE:     img = img.resize((basewidth,hsize), PIL.Image.ANTIALIAS)
 
 
-"""
-
-MODIFY THIS COMMAND TO RUN and generate contour map
-matlab -nodisplay -r "ContourMap('~/Desktop/test.csv','~/Desktop/test.png')" 
-
-
-"""
-
+BLOCK_SIZE = 8
 
 SHOW = False # Determines if images are shown or merely saved
 
@@ -30,6 +26,40 @@ db = Database(password)
 cur = db.get_cur()
 
 path_offset = "../Static_Files/" # Path offset from cwd to image directory
+
+def current_fig_image():
+    plt.axis('off')
+    buff = StringIO.StringIO()
+    plt.savefig(buff)
+    buff.seek(0)
+    img = Image.open(buff)
+    return img
+
+def rectify_data(data):
+    """Assumes data is a proper 2D array"""
+    if len(data) == 0:
+        return []
+    rows = len(data)
+    cols = len(data[0]) 
+    new_data = [[0 for j in range(cols)] for i in range(rows)]
+    for row in range(rows):
+        for col in range(cols):
+            new_data[row][col] = block_average(data,row,col,BLOCK_SIZE, cols,rows)
+    return new_data
+
+def rectify_data(data):
+    """Assumes data is a proper 2D array"""
+    if len(data) == 0:
+        return []
+    rows = len(data)
+    cols = len(data[0]) 
+    new_data = [[0 for j in range(cols)] for i in range(rows)]
+    for row in range(rows):
+        for col in range(cols):
+            new_data[row][col] = block_average(data,row,col,BLOCK_SIZE, cols,rows)
+    return new_data
+
+
 
 def block_average(data,row,col,BLOCK_SIZE,width,height):
     """averages the values in data in a block of side size BLOCK_SIZE."""
@@ -73,21 +103,24 @@ def make_csv(data,height):
         lines.append(str(x))
     for (x,y,z) in data:
         zs[ y_pos[y] ][ x_pos[x] ] = z
-    new_zs = [[min_z for j in range(num_X)] for i in range(num_Y)]
-    BLOCK_SIZE = 6
-    for row in range(num_Y):
-        for col in range(num_X):
-            new_zs[row][col] = block_average(zs,row,col,BLOCK_SIZE, num_X,num_Y)
+    zs = rectify_data(zs)
     for line in zs:
         lines.append( ','.join( map(str,line) ) )
-    plt.contourf(xs,ys,new_zs)
-    plt.show()
+    cs = plt.contourf(xs,ys,zs)
+    labels = map(lambda x: str(x) + " -db" ,cs.levels)
+#    print cs.collections[0].get_label()
+    proxy = [plt.Rectangle((0,0),1,1,fc = pc.get_facecolor()[0]) 
+        for pc in cs.collections]
+    contourImage = current_fig_image()
+    plt.clf()
+    plt.legend(proxy, labels)
+    legendImage = current_fig_image()
+    contourImage.show()
+    legendImage.show()
 
 
-    return '\n'.join(lines)
 
-
-
+    return contourImage,legendImage
 
 
 
