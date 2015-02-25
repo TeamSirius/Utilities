@@ -18,6 +18,7 @@ password = os.environ.get('SIRIUS_PASSWORD')
 
 radius = 5 # point radius
 
+THRESHOLD = 225
 
 if password is None:
     raise Exception('No password available')
@@ -27,12 +28,31 @@ cur = db.get_cur()
 
 path_offset = "../Static_Files/" # Path offset from cwd to image directory
 
+def crop_box(img):
+    """returns a cropbox for an image in which removes as much white boarder as possible without
+    removing any pixeles that are not == (255,255,255)"""
+    width,height = img.size
+    xs = []
+    ys = []
+    pixeles = img.load()
+    for w in range(width):
+        for h in range(height):
+            if pixeles[w,h] != (255,255,255):
+                xs.append(w)
+                ys.append(h)
+    return (min(xs),min(ys),max(xs),max(ys))
+
+
+
+
+
 def current_fig_image():
+    """Takes current figure of matplotlib and returns it as a PIL image"""
     plt.axis('off')
     buff = StringIO.StringIO()
     plt.savefig(buff)
     buff.seek(0)
-    img = Image.open(buff)
+    img = Image.open(buff).convert('RGB')
     return img
 
 def rectify_data(data):
@@ -76,7 +96,7 @@ def block_average(data,row,col,BLOCK_SIZE,width,height):
     return float(s) / counter
 
  
-def make_csv(data,height):
+def make_contour_map(data,height):
     """Takes the given data and builds the csv string. 
     This function DOES NOT save the file. The expected input data
     should be a list in the format [(x,y,z),...]. The y data will be
@@ -108,22 +128,14 @@ def make_csv(data,height):
         lines.append( ','.join( map(str,line) ) )
     cs = plt.contourf(xs,ys,zs)
     labels = map(lambda x: str(x) + " -db" ,cs.levels)
-#    print cs.collections[0].get_label()
     proxy = [plt.Rectangle((0,0),1,1,fc = pc.get_facecolor()[0]) 
         for pc in cs.collections]
     contourImage = current_fig_image()
     plt.clf()
     plt.legend(proxy, labels)
     legendImage = current_fig_image()
-    contourImage.show()
-    legendImage.show()
-
-
-
+    legendImage = legendImage.crop( crop_box(legendImage) )
     return contourImage,legendImage
-
-
-
 
 def main():
     """Generates a csv map that ContourMap.m can parse to create a contour map
@@ -142,11 +154,10 @@ def main():
     floors = cur.fetchall()
     full_path = os.path.join(os.getcwd(),path_offset, imagePath)
     try:
-        img = Image.open(full_path)
+        img = Image.open(full_path).convert('RGB')
     except IOError,err:
         exit("{}: Image not found at {}".format(argv[0],full_path))
     width, height = img.size
-    #building APS
     # cur.execute("""select x,y,count(*) from location 
     #     join accesspoint on location.id=location_id
     #     where floor_id=%s
@@ -155,13 +166,27 @@ def main():
         join accesspoint on location.id=location_id
         where floor_id=%s
         group by location.id""",[floorId])
-    apCSV = make_csv(cur.fetchall(), height)
-    apCSVPath= os.path.join(os.getcwd(),
-     path_offset,
-      "floor_{}_ap.csv".format(floorId))
-    f = open(apCSVPath,"w+")
-    f.write(apCSV)
-    f.close()
+    contourImage,legendImage = make_contour_map(cur.fetchall(), height)
+    contourImage = contourImage.crop( crop_box(contourImage) )
+    contourImage = contourImage.resize((width,height), Image.BILINEAR)
+    # #contourImage.show()
+    overlay = Image.new("RGB", (width, height), "white")
+    overlayPixels = overlay.load()
+    contourPixels = contourImage.load()
+    cw,ch = contourImage.size
+    mapPixels = img.load()
+    for w in range(width):
+        for h in range(height):
+            r,g,b = mapPixels[w,h]
+            if r <= THRESHOLD and g <= THRESHOLD and b <= THRESHOLD:
+                overlayPixels[w,h] = (0,0,0)
+            else:
+                if w < cw and h < ch:
+                    overlayPixels[w,h] = contourPixels[w,h]
+                else:
+                    overlayPixels[w,h] = mapPixels[w,h]
+    overlay.show()
+
 
 if __name__ == "__main__":
     main()
