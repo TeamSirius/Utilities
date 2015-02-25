@@ -28,6 +28,30 @@ cur = db.get_cur()
 
 path_offset = "../Static_Files/" # Path offset from cwd to image directory
 
+
+def overlay_image(img,data):
+    width,height = img.size
+    contourImage,legendImage = make_contour_map(data, height)
+    contourImage = contourImage.crop( crop_box(contourImage) )
+    contourImage = contourImage.resize((width,height), Image.BILINEAR)
+    overlay = Image.new("RGB", (width, height), "white")
+    overlayPixels = overlay.load()
+    contourPixels = contourImage.load()
+    cw,ch = contourImage.size
+    mapPixels = img.load()
+    for w in range(width):
+        for h in range(height):
+            r,g,b = mapPixels[w,h]
+            if r <= THRESHOLD and g <= THRESHOLD and b <= THRESHOLD:
+                overlayPixels[w,h] = (0,0,0)
+            else:
+                if w < cw and h < ch:
+                    overlayPixels[w,h] = contourPixels[w,h]
+                else:
+                    overlayPixels[w,h] = mapPixels[w,h]
+    return overlay
+
+
 def crop_box(img):
     """returns a cropbox for an image in which removes as much white boarder as possible without
     removing any pixeles that are not == (255,255,255)"""
@@ -43,16 +67,15 @@ def crop_box(img):
     return (min(xs),min(ys),max(xs),max(ys))
 
 
-
-
-
 def current_fig_image():
-    """Takes current figure of matplotlib and returns it as a PIL image"""
+    """Takes current figure of matplotlib and returns it as a PIL image. 
+    Also clears the current plot"""
     plt.axis('off')
     buff = StringIO.StringIO()
     plt.savefig(buff)
     buff.seek(0)
     img = Image.open(buff).convert('RGB')
+    plt.clf()
     return img
 
 def rectify_data(data):
@@ -131,7 +154,6 @@ def make_contour_map(data,height):
     proxy = [plt.Rectangle((0,0),1,1,fc = pc.get_facecolor()[0]) 
         for pc in cs.collections]
     contourImage = current_fig_image()
-    plt.clf()
     plt.legend(proxy, labels)
     legendImage = current_fig_image()
     legendImage = legendImage.crop( crop_box(legendImage) )
@@ -152,40 +174,36 @@ def main():
     imagePath = imagePath[0]
     floorId = argv[1]
     floors = cur.fetchall()
-    full_path = os.path.join(os.getcwd(),path_offset, imagePath)
+    img_path = os.path.join(os.getcwd(),path_offset, imagePath)
     try:
-        img = Image.open(full_path).convert('RGB')
+        img = Image.open(img_path).convert('RGB')
     except IOError,err:
-        exit("{}: Image not found at {}".format(argv[0],full_path))
-    width, height = img.size
-    # cur.execute("""select x,y,count(*) from location 
-    #     join accesspoint on location.id=location_id
-    #     where floor_id=%s
-    #     group by location.id""",[floorId])
+        exit("{}: Image not found at {}".format(argv[0],img_path))
+    #Access point density map
+    cur.execute("""select x,y,count(*) from location 
+        join accesspoint on location.id=location_id
+        where floor_id=%s
+        group by location.id""",[floorId])
+    overlay_image(img,cur.fetchall()).show()
+    #Maximim strength map
     cur.execute("""select x,y,max(strength) from location 
         join accesspoint on location.id=location_id
         where floor_id=%s
         group by location.id""",[floorId])
-    contourImage,legendImage = make_contour_map(cur.fetchall(), height)
-    contourImage = contourImage.crop( crop_box(contourImage) )
-    contourImage = contourImage.resize((width,height), Image.BILINEAR)
-    # #contourImage.show()
-    overlay = Image.new("RGB", (width, height), "white")
-    overlayPixels = overlay.load()
-    contourPixels = contourImage.load()
-    cw,ch = contourImage.size
-    mapPixels = img.load()
-    for w in range(width):
-        for h in range(height):
-            r,g,b = mapPixels[w,h]
-            if r <= THRESHOLD and g <= THRESHOLD and b <= THRESHOLD:
-                overlayPixels[w,h] = (0,0,0)
-            else:
-                if w < cw and h < ch:
-                    overlayPixels[w,h] = contourPixels[w,h]
-                else:
-                    overlayPixels[w,h] = mapPixels[w,h]
-    overlay.show()
+    overlay_image(img,cur.fetchall()).show()
+    #Minimum strength map
+    cur.execute("""select x,y,min(strength) from location 
+        join accesspoint on location.id=location_id
+        where floor_id=%s
+        group by location.id""",[floorId])
+    overlay_image(img,cur.fetchall()).show()
+    #Mean strength map
+    cur.execute("""select x,y,min(strength)/count(*) from location 
+        join accesspoint on location.id=location_id
+        where floor_id=%s
+        group by location.id""",[floorId])
+    overlay_image(img,cur.fetchall()).show()
+  
 
 
 if __name__ == "__main__":
