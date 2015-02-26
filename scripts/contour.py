@@ -10,6 +10,8 @@ import StringIO
 #RESIZE:     img = img.resize((basewidth,hsize), PIL.Image.ANTIALIAS)
 
 
+my_dpi = 100
+
 BLOCK_SIZE = 8
 
 SHOW = False # Determines if images are shown or merely saved
@@ -31,7 +33,7 @@ path_offset = "../Static_Files/" # Path offset from cwd to image directory
 
 def overlay_image(img,data):
     width,height = img.size
-    contourImage,legendImage = make_contour_map(data, height)
+    contourImage,legendImage = make_contour_map(data, height,width)
     contourImage = contourImage.crop( crop_box(contourImage) )
     contourImage = contourImage.resize((width,height), Image.BILINEAR)
     overlay = Image.new("RGB", (width, height), "white")
@@ -64,6 +66,8 @@ def crop_box(img):
             if pixeles[w,h] != (255,255,255):
                 xs.append(w)
                 ys.append(h)
+    if not xs or not ys:
+        return (0,0,width,height)
     return (min(xs),min(ys),max(xs),max(ys))
 
 
@@ -71,8 +75,9 @@ def current_fig_image():
     """Takes current figure of matplotlib and returns it as a PIL image. 
     Also clears the current plot"""
     plt.axis('off')
+    fig = plt.gcf()
     buff = StringIO.StringIO()
-    plt.savefig(buff)
+    fig.savefig(buff)
     buff.seek(0)
     img = Image.open(buff).convert('RGB')
     plt.clf()
@@ -90,19 +95,6 @@ def rectify_data(data):
             new_data[row][col] = block_average(data,row,col,BLOCK_SIZE, cols,rows)
     return new_data
 
-def rectify_data(data):
-    """Assumes data is a proper 2D array"""
-    if len(data) == 0:
-        return []
-    rows = len(data)
-    cols = len(data[0]) 
-    new_data = [[0 for j in range(cols)] for i in range(rows)]
-    for row in range(rows):
-        for col in range(cols):
-            new_data[row][col] = block_average(data,row,col,BLOCK_SIZE, cols,rows)
-    return new_data
-
-
 
 def block_average(data,row,col,BLOCK_SIZE,width,height):
     """averages the values in data in a block of side size BLOCK_SIZE."""
@@ -119,7 +111,7 @@ def block_average(data,row,col,BLOCK_SIZE,width,height):
     return float(s) / counter
 
  
-def make_contour_map(data,height):
+def make_contour_map(data,height,width):
     """Takes the given data and builds the csv string. 
     This function DOES NOT save the file. The expected input data
     should be a list in the format [(x,y,z),...]. The y data will be
@@ -128,6 +120,12 @@ def make_contour_map(data,height):
     xs = sorted(set([item[0] for item in data]))
     ys = sorted(set([height - item[1] for item in data]))
     Z = [item[2] for item in data]
+    xs.insert(0,0)
+    ys.insert(0,0)
+    Z.insert(0,0)
+    xs.append(width)
+    ys.append(height)
+    Z.append(0)
     min_z = 0
     #Flips ys
     num_X = len(xs)
@@ -149,6 +147,9 @@ def make_contour_map(data,height):
     zs = rectify_data(zs)
     for line in zs:
         lines.append( ','.join( map(str,line) ) )
+    plt.gca().set_ylim([0,height])
+    plt.gca().set_xlim([0,width])
+    plt.gcf().set_frameon(False)
     cs = plt.contourf(xs,ys,zs)
     labels = map(lambda x: str(x) + " -db" ,cs.levels)
     proxy = [plt.Rectangle((0,0),1,1,fc = pc.get_facecolor()[0]) 
