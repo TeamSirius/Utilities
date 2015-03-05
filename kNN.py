@@ -253,10 +253,13 @@ def get_data2():
     return (formatted_data, formatted_aps)
 
 def getData():
-	cur.execute("""SET SESSION group_concat_max_len = 1000000""")
-	cur.execute("""SELECT floor_id,accesspoint.location_id,x,y,direction, GROUP_CONCAT(MAC) as MAC_list,GROUP_CONCAT(strength) as strength_list from accesspoint
-	 join location on location.id=accesspoint.location_id
-	  group by accesspoint.location_id,x,y,direction""")
+	cur.execute("""SELECT floor_id,marauder_accesspoint.location_id, x_coordinate, y_coordinate, direction,
+         array_to_string(array_agg(mac_address),',') as MAC_list,
+         array_to_string(array_agg(signal_strength),',') as strength_list 
+        from marauder_accesspoint 
+        join marauder_location 
+            on marauder_location.id=marauder_accesspoint.location_id
+        group by floor_id,marauder_accesspoint.location_id,x_coordinate,y_coordinate,direction""")
 	access_points = cur.fetchall()
 	res = []
 	for f in access_points:
