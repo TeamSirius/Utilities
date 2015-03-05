@@ -103,8 +103,8 @@ def Analyse(password):
         cur.execute("""SET SESSION group_concat_max_len = 1000000""")
         cur.execute("""SELECT accesspoint.location_id, GROUP_CONCAT(MAC) as MAC_list,
             GROUP_CONCAT(strength) as strength_list,
-            GROUP_CONCAT(std_dev) as std_list from accesspoint
-            join location on location.id=accesspoint.location_id
+            GROUP_CONCAT(std_dev) as std_list from marauder_accesspoint
+            join marauder_location on location.id=accesspoint.location_id
             where location.id in (%s,%s,%s,%s,%s)
             group by accesspoint.location_id,x,y,direction""", id_list)
         all_macs = []

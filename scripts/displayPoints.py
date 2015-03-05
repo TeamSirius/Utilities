@@ -60,7 +60,7 @@ def main():
     floor map image. If the image is not found the floor is skipped. The image
     is saved in the same folder the images are found with the name 
     floor_[id]_points.png"""
-    cur.execute("""SELECT id,imagePath from floor""")
+    cur.execute("""SELECT id,imagePath from marauder_floor""")
     floors = cur.fetchall()
     for floor in floors:
         floorId = floor[0]
@@ -72,7 +72,7 @@ def main():
             print "Image {} not found. Skipping floor".format(full_path)
             continue        
         draw_image = ImageDraw.Draw(image)
-        cur.execute("""SELECT x,y from location where floor_id=%s""",[floorId])
+        cur.execute("""SELECT x,y from marauder_location where floor_id=%s""",[floorId])
         locations = cur.fetchall()
         for location in locations:
             x,y = location

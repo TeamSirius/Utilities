@@ -5,12 +5,12 @@ from db.db import Database
 import argparse
 import json
 
-q = """select floor_id,accesspoint.location_id,x,y,direction, GROUP_CONCAT(MAC) as MAC_list,GROUP_CONCAT(strength) as strength_list from accesspoint
- join location on location.id=accesspoint.location_id
+q = """select floor_id,accesspoint.location_id,x,y,direction, GROUP_CONCAT(MAC) as MAC_list,GROUP_CONCAT(strength) as strength_list from marauder_accesspoint
+ join marauder_location on location.id=accesspoint.location_id
   group by accesspoint.location_id,x,y,direction"""
 
-q2 = """select floor_id,accesspoint.location_id,x,y,direction, GROUP_CONCAT(MAC) as MAC_list,GROUP_CONCAT(strength) as strength_list from accesspoint
- join location on location.id=accesspoint.location_id WHERE location.id = 61
+q2 = """select floor_id,accesspoint.location_id,x,y,direction, GROUP_CONCAT(MAC) as MAC_list,GROUP_CONCAT(strength) as strength_list from marauder_accesspoint
+ join marauder_location on location.id=accesspoint.location_id WHERE location.id = 61
   group by accesspoint.location_id,x,y,direction"""
 
 

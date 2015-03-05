@@ -203,32 +203,32 @@ def main():
     except IOError,err:
         exit("{}: Image not found at {}".format(argv[0],img_path))
     #Access point density map
-    cur.execute("""select x,y,count(*) from location 
-        join accesspoint on location.id=location_id
+    cur.execute("""select x,y,count(*) from marauder_location 
+        join marauder_accesspoint on location.id=location_id
         where floor_id=%s
         group by location.id""",[floorId])
     imgCon, leg = overlay_image(img,cur.fetchall(),0)
     imgCon.save(os.path.join(os.getcwd(),path_offset,"floor_{}_AP_map.jpg".format(floorId) ) )
     leg.save(os.path.join(os.getcwd(),path_offset,"floor_{}_AP_legend.jpg".format(floorId) ) )
     #Maximim strength map
-    cur.execute("""select x,y,max(strength) from location 
-        join accesspoint on location.id=location_id
+    cur.execute("""select x,y,max(strength) from marauder_location 
+        join marauder_accesspoint on location.id=location_id
         where floor_id=%s
         group by location.id""",[floorId])
     imgCon, leg = overlay_image(img,cur.fetchall(),-120)
     imgCon.save(os.path.join(os.getcwd(),path_offset,"floor_{}_max_map.jpg".format(floorId) ) )
     leg.save(os.path.join(os.getcwd(),path_offset,"floor_{}_max_legend.jpg".format(floorId) ) )
     #Minimum strength map
-    cur.execute("""select x,y,min(strength) from location 
-        join accesspoint on location.id=location_id
+    cur.execute("""select x,y,min(strength) from marauder_location 
+        join marauder_accesspoint on location.id=location_id
         where floor_id=%s
         group by location.id""",[floorId])
     imgCon, leg = overlay_image(img,cur.fetchall(),-120)
     imgCon.save(os.path.join(os.getcwd(),path_offset,"floor_{}_min_map.jpg".format(floorId) ) )
     leg.save(os.path.join(os.getcwd(),path_offset,"floor_{}_min_legend.jpg".format(floorId) ) )
     #Mean strength map
-    cur.execute("""select x,y,sum(strength)/count(*) from location 
-        join accesspoint on location.id=location_id
+    cur.execute("""select x,y,sum(strength)/count(*) from marauder_location 
+        join marauder_accesspoint on location.id=location_id
         where floor_id=%s
         group by location.id""",[floorId])
     imgCon, leg = overlay_image(img,cur.fetchall(),-120)

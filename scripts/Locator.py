@@ -16,7 +16,7 @@ def Launch_Locator(password):
     db = Database(password)
     cur = db.get_cur()
     halligan_two = os.path.join('static_files/',  'Halligan_2.png')
-    cur.execute("""SELECT x, y from demhoes order by id desc limit 1 """)
+    cur.execute("""SELECT x, y from marauder_demhoes order by id desc limit 1 """)
     row = cur.fetchone()
     if row is not None:
         x = int(float(row[0]))

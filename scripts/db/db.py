@@ -1,4 +1,4 @@
-import pymysql
+import psycopg2
 
 DEBUG = False
 
@@ -13,10 +13,17 @@ class Database:
         self.cur = self.get_cur()
 
     def get_cur(self):
-        host = 'seniorindoorlocation.chopksxzy4yo.us-east-1.rds.amazonaws.com'
-        conn = pymysql.connect(host=host, db='sirius',
-                               user='wormtail', passwd=self.password)
-        conn.autocommit(True)
+        host = 'seniordesign.chopksxzy4yo.us-east-1.rds.amazonaws.com'
+        user = "wormtail"
+        database = "sirius"
+        conn = psycopg2.connect(
+            database=database,
+            user=user,
+            host=host,
+            password=self.password,
+            port=5432
+            )
+        conn.autocommit = True
         return conn.cursor()
 
     def create_location(self):
