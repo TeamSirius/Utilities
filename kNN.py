@@ -42,7 +42,8 @@ class Location(object):
         self.init_aps(loc[4])
 
     def printLoc(self):
-        sys.stdout.write("Location: (x, y) = (" + str(self.x) + ", " + str(self.y) + ")\n")
+        sys.stdout.write("Location: (x, y) = (" + str(self.x) + ", " + str(self.y) + \
+                "), Floor = " + str(self.floor_id) + "\n")
 
     # Stores Access Points in a {mac_id : AccessPoint} dictionary
     def init_aps(self, aps):
@@ -281,6 +282,62 @@ def kNN(aps):
     (x, y, floor) = apply_kNN(data, aps)
     return (x, y, floor)
 
+# BRETT NORMALIZE FUNCTION
+def normalize_all_data(data, testdata):
+    global MIN_DETECTED
+    strengths = []
+    for loc in data:
+        for ap in loc.aps.values():
+            strengths.append(ap.strength)
+    mean = get_mean(strengths)
+    st_dev = get_sd(strengths)
+    for loc in data:
+        for ap in loc.aps.values():
+            ap.strength = (ap.strength - mean) / st_dev
+            if ap.strength < MIN_DETECTED:
+                MIN_DETECTED = ap.strength
+    for loc in testdata:
+        for ap in loc.aps.values():
+            ap.strength = (ap.strength - mean) / st_dev
+            if ap.strength < MIN_DETECTED:
+                MIN_DETECTED = ap.strength
+
+# BRETT TEST STUFF
+def testAccuracy():
+    all_data = get_locations()
+    data = [d for d in all_data if d.floor_id != 3]
+    testdata = [d for d in all_data if d.floor_id == 3]
+    normalize_all_data(data, testdata)
+    wrong_floor_count = 0
+    error_total = 0
+    distances = [0] * 10 # [0-1 meter, 1-2, 2-3, etc]
+    for i in range(len(testdata)):
+        element = testdata[i]
+        aps = element.aps
+        (x, y, floor)  = apply_kNN(data, aps)
+        cur_error = error(element, x, y, floor)
+        #sys.stdout.write("Real (x, y): (" + str(element.x) + ", " + str(element.y) + ")\n")
+        #sys.stdout.write("Found (x, y): (" + str(x) + ", " + str(y) + ")\n")
+        #sys.stdout.write("  Error: " + str(cur_error / 9.555) + "\n")
+        print element.x, element.y, x, y
+        if cur_error == -1:
+            wrong_floor_count += 1
+        else:
+            #For Halligan_2.png, 14.764px ~= 1 meter
+            #For Halligan_1.png 9.555px ~= 1 meter
+            if floor == 1: #id NOT FLOOR NUMBER!!
+                error_total += cur_error / 14.764
+                distances[min(int(cur_error / 14.764), 9)] += 1
+            else:
+                error_total += cur_error / 9.555
+                distances[min(int(cur_error / 9.555), 9)] += 1
+    return
+    print "FOR " + str(len(testdata)) + " POINTS:"
+    print "Incorrect Floor Count:", wrong_floor_count
+    print "Avg error: " + str(float(error_total) / (len(testdata) - wrong_floor_count)) + "m"
+    print "Distances:", distances
+    print ""
+
 def getMinMax():
     dataa = get_locations()
     normalize(dataa[:-1], dataa[-1].aps)
@@ -300,11 +357,13 @@ def getMinMax():
     return (minx, maxx, miny, maxy)
 
 def error(element, x, y, floor):
-    if element.floor_id != floor:
+    if element.floor_id == 3 and floor != 2:
+        return -1
+    elif element.floor_id != 3 and element.floor_id != floor:
         return -1
     else:
         dist = math.sqrt(pow(element.x - x, 2) + pow(element.y - y, 2))
-        return dist
+    return dist
 
 def LOOCV():
     import subprocess as sp
@@ -312,6 +371,8 @@ def LOOCV():
     print "RUNNING LOOCV TESTS"
     print ""
     data = get_locations()
+    data = [d for d in data if d.floor_id != 3]
+    print len(data)
     normalize(data[:-1], data[-1].aps) # Hacky way to normalize all data
     wrong_floor_count = 0
     error_total = 0
@@ -424,4 +485,6 @@ def wrapper():
     fp.close()
 
 if __name__ == "__main__":
-    wrapper()
+    #wrapper()
+    testAccuracy()
+    #LOOCV()
