@@ -237,6 +237,20 @@ def draw_point(p, color):
     APP['points'].append(p)
     APP['canvas_list'].append(new_canvas)
 
+def draw_rectangle(rectangle, outline_color):
+    """ draws a rectangle at the coordinates with the specified color """
+    global APP
+
+    corners = rectangle.corners()
+    p1 = corners[0]
+    p2 = corners[2]
+
+    new_canvas = APP['canvas'].create_rectangle(
+        p1.x, p1.y, p2.x, p2.y, outline=outline_color, width=2)
+
+    APP['canvas_list'].append(new_canvas)
+
+
 
 def handle_click(click):
     """ Adds a point to the canvas; if there are enough points, allows logging """
@@ -262,8 +276,7 @@ def log():
     rectangle = Rectangle(APP['points'])
     reset()
 
-    for p in rectangle.corners():
-        draw_point(p, 'red')
+    draw_rectangle(rectangle, 'red')
 
     # command = raw_input("Confirm Points? [Y/N]")
     command = 'Y'
@@ -303,6 +316,7 @@ def reset():
         APP['canvas'].delete(canvas)
 
     APP['points'] = []
+    APP['rectangles'] = []
     APP['canvas_list'] = []
 
 
