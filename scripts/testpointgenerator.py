@@ -248,6 +248,7 @@ def draw_rectangle(rectangle, outline_color):
     new_canvas = APP['canvas'].create_rectangle(
         p1.x, p1.y, p2.x, p2.y, outline=outline_color, width=2)
 
+    APP['rectangles'].append(rectangle)
     APP['canvas_list'].append(new_canvas)
 
 
@@ -276,13 +277,11 @@ def log():
     rectangle = Rectangle(APP['points'])
     reset()
 
-    draw_rectangle(rectangle, 'red')
-
     # command = raw_input("Confirm Points? [Y/N]")
     command = 'Y'
     if command.upper() == 'Y':
+        draw_rectangle(rectangle, 'red')
         APP['buttons']['done_btn'].pack(side='right')
-        APP['rectangles'].append(rectangle)
         APP['points'] = []
         APP['canvas_list'] = []
     else:
@@ -316,7 +315,6 @@ def reset():
         APP['canvas'].delete(canvas)
 
     APP['points'] = []
-    APP['rectangles'] = []
     APP['canvas_list'] = []
 
 
