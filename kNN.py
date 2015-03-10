@@ -3,6 +3,7 @@
 # kNN Implementation for Senior Design Project
 
 from collections import Counter
+from scipy.stats import ttest_ind,norm
 import sets
 import math
 import sys
@@ -92,7 +93,6 @@ class Location(object):
     #   return coeffA * size_shared + coeffB * size_diff + coeffC * probability"""
 
 def similarity(ap1, ap2):
-    from scipy.stats import ttest_ind,norm
     return 1 - ttest_ind(
         norm.rvs(loc=ap1.strength,scale=ap1.std,size=ap1.sample_size),
         norm.rvs(loc=ap2.strength,scale=ap2.std,size=ap2.sample_size),
@@ -140,13 +140,16 @@ def weighted_avg(tuples, inverse):
 
 
 def jaccardDistance(aps1, aps2):
-    count = 0
-    for ap in aps2.values():
-        if ap.mac in aps1.keys():
-            count += 1
-    intersection = count
-    union = len(aps1.keys()) + len(aps2.keys()) - count
-    return float(intersection) / union
+    # count = 0
+    # for ap in aps2.values():
+    #     if ap.mac in aps1.keys():
+    #         count += 1
+    # intersection = count
+    # union = len(aps1.keys()) + len(aps2.keys()) - count
+    # return float(intersection) / union
+    set1 = set(L1)
+    set2 = set(L2)
+    return float(len(set1.intersection(set2))) / set1.union(set2)
 
 
 def realDistance(d1, d2):
@@ -190,8 +193,9 @@ def apply_kNN_func(data, aps, func , k = 3):
 
 
 # Returns the standard deviation of the given list
-def get_sd(l):
-    mean = get_mean(l)
+def get_sd(l,mean=None):
+    if not mean:
+        mean = get_mean(l)
     rVal = 0
     for elem in l:
         rVal += (elem - mean) ** 2
@@ -203,23 +207,23 @@ def get_mean(l):
 
 # Normalizes the signal strengths of all AccessPoints in the given array of
 # Locations and the given AccessPoint dictionary
-def normalize(data, aps):
-    global MIN_DETECTED
-    strengths = []
-    for loc in data:
-        for ap in loc.aps.values():
-            strengths.append(ap.strength)
-    mean = get_mean(strengths)
-    st_dev = get_sd(strengths)
-    for loc in data:
-        for ap in loc.aps.values():
-            ap.strength = (ap.strength - mean) / st_dev
-            if ap.strength < MIN_DETECTED:
-                MIN_DETECTED = ap.strength
-    for ap in aps.values():
-        ap.strength = (ap.strength - mean) / st_dev
-        if ap.strength < MIN_DETECTED:
-            MIN_DETECTED = ap.strength
+# def normalize(data, aps):
+#     global MIN_DETECTED
+#     strengths = []
+#     for loc in data:
+#         for ap in loc.aps.values():
+#             strengths.append(ap.strength)
+#     mean = get_mean(strengths)
+#     st_dev = get_sd(strengths)
+#     for loc in data:
+#         for ap in loc.aps.values():
+#             ap.strength = (ap.strength - mean) / st_dev
+#             if ap.strength < MIN_DETECTED:
+#                 MIN_DETECTED = ap.strength
+#     for ap in aps.values():
+#         ap.strength = (ap.strength - mean) / st_dev
+#         if ap.strength < MIN_DETECTED:
+#             MIN_DETECTED = ap.strength
 
 # SUITE OF FUNCTIONS FOR TYLER
 
@@ -295,7 +299,7 @@ def normalize_all_data(data, testdata):
         for ap in loc.aps.values():
             strengths.append(ap.strength)
     mean = get_mean(strengths)
-    st_dev = get_sd(strengths)
+    st_dev = get_sd(strengths,mean)
     for loc in data:
         for ap in loc.aps.values():
             ap.strength = (ap.strength - mean) / st_dev
@@ -311,12 +315,20 @@ def normalize_all_data(data, testdata):
 def testAccuracy():
     sql_data = getData()
     all_data = get_locations(sql_data)
-    data = [d for d in all_data if d.floor_id != 3]
-    testdata = [d for d in all_data if d.floor_id == 3]
+    data = []
+    testdata = []
+    for d in all_data:
+        if d.floor_id == 3:
+            testdata.append(d)
+        else:
+            data.append(d)
+    # data = [d for d in all_data if d.floor_id != 3]
+    # testdata = [d for d in all_data if d.floor_id == 3]
     normalize_all_data(data, testdata)
     wrong_floor_count = 0
     error_total = 0
-    distances = [0] * 10 # [0-1 meter, 1-2, 2-3, etc]
+    #distances = [0] * 10 # [0-1 meter, 1-2, 2-3, etc]
+    distances = {}
     for i in range(len(testdata)):
         element = testdata[i]
         aps = element.aps
@@ -330,35 +342,55 @@ def testAccuracy():
             #For Halligan_1.png 9.555px ~= 1 meter
             if floor == 1: #id NOT FLOOR NUMBER!!
                 error_total += cur_error / 14.764
-                distances[min(int(cur_error / 14.764), 9)] += 1
+                distances[int(cur_error / 14.764)] = distances.get(int(cur_error / 14.764),0) + 1
+                #distances[min(int(cur_error / 14.764), 9)] += 1
             else:
                 print cur_error / 9.555
                 error_total += cur_error / 9.555
-                distances[min(int(cur_error / 9.555), 9)] += 1
-    print "FOR " + str(len(testdata)) + " POINTS:"
-    print "Incorrect Floor Count:", wrong_floor_count
-    print "Avg error: " + str(float(error_total) / (len(testdata) - wrong_floor_count)) + "m"
-    print "Distances:", distances
-    print ""
+                distances[int(cur_error / 9.555)] = distances.get(int(cur_error / 9.555),0) + 1
+                #distances[min(int(cur_error / 9.555), 9)] += 1
+    # print "FOR " + str(len(testdata)) + " POINTS:"
+    # print "Incorrect Floor Count:", wrong_floor_count
+    # print "Avg error: " + str(float(error_total) / (len(testdata) - wrong_floor_count)) + "m"
+    
+    print "Total points: {}".format(len(testdata))
+    print "Error Histogram"
+    sorted_keys = sorted(distances.keys())
+    print distances
+    max_key = int(sorted_keys[-1])
+    for i in range(max_key):
+        if i not in distances:
+            distances[i] = 0
+    for k in range(max_key + 1):
+        i = int(k)
+        start = str(i).rjust(2)
+        end = str(i + 1).rjust(2)
+        row = "#" * distances[k]
+        print "{} to {}m: {}".format(start,end,row)
+    print "Average Error: {}m".format(round(float(error_total) / (len(testdata) - wrong_floor_count),2))
+    print "Incorrect Floors: {}".format(wrong_floor_count)
 
-def getMinMax():
-    sql_data = getData()
-    dataa = get_locations(sql_data)
-    normalize(dataa[:-1], dataa[-1].aps)
-    minx = 100000
-    maxx = 0
-    miny = 100000
-    maxy = 0
-    for data in dataa:
-        if data.x < minx:
-            minx = data.x
-        if data.x > maxx:
-            maxx = data.x
-        if data.y < miny:
-            miny = data.y
-        if data.y > maxy:
-            maxy = data.y
-    return (minx, maxx, miny, maxy)
+    # print "Distances:", distances
+    # print ""
+
+# def getMinMax():
+#     sql_data = getData()
+#     dataa = get_locations(sql_data)
+#     normalize(dataa[:-1], dataa[-1].aps)
+#     minx = 100000
+#     maxx = 0
+#     miny = 100000
+#     maxy = 0
+#     for data in dataa:
+#         if data.x < minx:
+#             minx = data.x
+#         if data.x > maxx:
+#             maxx = data.x
+#         if data.y < miny:
+#             miny = data.y
+#         if data.y > maxy:
+#             maxy = data.y
+#     return (minx, maxx, miny, maxy)
 
 def error(element, x, y, floor):
     if element.floor_id == 3 and floor != 2:
@@ -369,87 +401,88 @@ def error(element, x, y, floor):
         dist = math.sqrt(pow(element.x - x, 2) + pow(element.y - y, 2))
     return dist
 
-def LOOCV():
-    print "RUNNING LOOCV TESTS"
-    print ""
-    sql_data = getData()
-    data = get_locations(sql_data)
-    data = [d for d in data if d.floor_id != 3]
-    print len(data)
-    normalize(data[:-1], data[-1].aps) # Hacky way to normalize all data
-    wrong_floor_count = 0
-    error_total = 0
-    distances = [0] * 10 # [0-1 meter, 1-2, 2-3, etc]
-    for i in range(len(data)):
-        element = data[i]
-        data.remove(element)
-        aps = element.aps
-        (x, y, floor)  = apply_kNN(data, aps)
-        cur_error = error(element, x, y, floor)
-        if cur_error == -1:
-            wrong_floor_count += 1
-        else:
-            #For Halligan_2.png, 14.764px ~= 1 meter
-            #For Halligan_1.png 9.555px ~= 1 meter
-            if floor == 1: #id NOT FLOOR NUMBER!!
-                error_total += cur_error / 14.764
-                distances[min(int(cur_error / 14.764), 9)] += 1
-            else:
-                error_total += cur_error / 9.555
-                distances[min(int(cur_error / 9.555), 9)] += 1
-        data.insert(i, element)
-    print "FOR " + str(len(data)) + " POINTS:"
-    print "Incorrect Floor Count:", wrong_floor_count
-    print "Avg error: " + str(float(error_total) / (len(data) - wrong_floor_count)) + "m"
-    print "Distances:", distances
-    print ""
+# def LOOCV():
+#     print "RUNNING LOOCV TESTS"
+#     print ""
+#     sql_data = getData()
+#     data = get_locations(sql_data)
+#     data = [d for d in data if d.floor_id != 3]
+#     print len(data)
+#     normalize(data[:-1], data[-1].aps) # Hacky way to normalize all data
+#     wrong_floor_count = 0
+#     error_total = 0
+#     distances = [0] * 10 # [0-1 meter, 1-2, 2-3, etc]
+#     for i in range(len(data)):
+#         element = data[i]
+#         data.remove(element)
+#         aps = element.aps
+#         (x, y, floor)  = apply_kNN(data, aps)
+#         cur_error = error(element, x, y, floor)
+#         if cur_error == -1:
+#             wrong_floor_count += 1
+#         else:
+#             #For Halligan_2.png, 14.764px ~= 1 meter
+#             #For Halligan_1.png 9.555px ~= 1 meter
+#             if floor == 1: #id NOT FLOOR NUMBER!!
+#                 error_total += cur_error / 14.764
+#                 distances[min(int(cur_error / 14.764), 9)] += 1
+#             else:
+#                 error_total += cur_error / 9.555
+#                 distances[min(int(cur_error / 9.555), 9)] += 1
+#         data.insert(i, element)
+#     print "FOR " + str(len(data)) + " POINTS:"
+#     print "Incorrect Floor Count:", wrong_floor_count
+#     print "Avg error: " + str(float(error_total) / (len(data) - wrong_floor_count)) + "m"
+#     print "Distances:", distances
+#     print ""
 
 
-def LOOCV_func(data, distance_func ):
-    wrong_floor_count = 0
-    error_total = 0
-    distances = [0] * 10 # [0-1 meter, 1-2, 2-3, etc]
-    for i in range(len(data)):
-        element = data[i]
-        data.remove(element)
-        aps = element.aps
-        (x, y, floor)  = apply_kNN_func(data, aps,distance_func)
-        cur_error = error(element, x, y, floor)
-        if cur_error == -1:
-            wrong_floor_count += 1
-        else:
-            #For Halligan_2.png, 14.764px ~= 1 meter
-            #For Halligan_1.png 9.555px ~= 1 meter
-            if floor == 1: #id NOT FLOOR NUMBER!!
-                error_total += cur_error / 14.764
-                distances[min(int(cur_error / 14.764), 9)] += 1
-            else:
-                error_total += cur_error / 9.555
-                distances[min(int(cur_error / 9.555), 9)] += 1
-        data.insert(i, element)
-    #Returns wrong floor count, average error
-    return wrong_floor_count, float(error_total) / (len(data) - wrong_floor_count)
+# def LOOCV_func(data, distance_func ):
+#     wrong_floor_count = 0
+#     error_total = 0
+#     distances = [0] * 10 # [0-1 meter, 1-2, 2-3, etc]
+#     for i in range(len(data)):
+#         element = data[i]
+#         data.remove(element)
+#         aps = element.aps
+#         (x, y, floor)  = apply_kNN_func(data, aps,distance_func)
+#         cur_error = error(element, x, y, floor)
+#         if cur_error == -1:
+#             wrong_floor_count += 1
+#         else:
+#             #For Halligan_2.png, 14.764px ~= 1 meter
+#             #For Halligan_1.png 9.555px ~= 1 meter
+#             if floor == 1: #id NOT FLOOR NUMBER!!
+#                 error_total += cur_error / 14.764
+#                 distances[min(int(cur_error / 14.764), 9)] += 1
+#             else:
+#                 error_total += cur_error / 9.555
+#                 distances[min(int(cur_error / 9.555), 9)] += 1
+#         data.insert(i, element)
+#     #Returns wrong floor count, average error
+#     return wrong_floor_count, float(error_total) / (len(data) - wrong_floor_count)
 
-def percent_same(L1, L2):
-    fullList = L1 + L2
-    unique = len(set(fullList))
-    total = len(fullList)
-    if total == 0:
-        return 1
-    return float(unique) / total
-
-def overlap_distance(aps1,aps2):
-    rVal = 0
-    for mac,ap1 in aps1.iteritems():
-        if mac in aps2:
-            strength1 = 10 ** (ap1.strength / 10)
-            strength2 = 10 ** (aps2[mac].strength / 10)
-            rVal = rVal + (strength1 - strength2) ** 2
-    return math.sqrt(rVal)
+# def percent_same(L1, L2):
+#     fullList = L1 + L2
+#     unique = len(set(fullList))
+#     total = len(fullList)
+#     if total == 0:
+#         return 1
+#     return float(unique) / total
 
 
-def make_dist_func(alpha,beta,delta):
-    return lambda APS_1, APS_2:  (alpha - beta) * percent_same(APS_1.keys(),APS_2.keys()) + alpha + delta * overlap_distance(APS_1,APS_2)
+# def overlap_distance(aps1,aps2):
+#     rVal = 0
+#     for mac,ap1 in aps1.iteritems():
+#         if mac in aps2:
+#             strength1 = 10 ** (ap1.strength / 10)
+#             strength2 = 10 ** (aps2[mac].strength / 10)
+#             rVal = rVal + (strength1 - strength2) ** 2
+#     return math.sqrt(rVal)
+
+
+# def make_dist_func(alpha,beta,delta):
+#     return lambda APS_1, APS_2:  (alpha - beta) * percent_same(APS_1.keys(),APS_2.keys()) + alpha + delta * overlap_distance(APS_1,APS_2)
 
 
 def error_rate(missed_floors, average_error):
