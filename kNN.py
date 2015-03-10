@@ -7,29 +7,28 @@ import sets
 import math
 import sys
 import os
-from scripts.db.db import Database
 from math import isinf
 
 # Minimum normalized RSSI value detected; used as "not detected" value
 MIN_DETECTED = 0
 
-password = os.environ.get('SIRIUS_PASSWORD')
-if password is None:
-    raise Exception('No database password available')
-
-db = Database(password)
-
-cur = db.get_cur()
 
 # Access Point class
 class AccessPoint(object):
-    def __init__(self, ap):
-        self.mac = ap[0]
-        self.strength_dbm = float(ap[1])
-        self.strength = 10 ** (float(ap[1]) / 10)
-        self.std = 10 ** (float(ap[2]) / 10)
-        self.datetime = ap[3]
-        #self.sample_size = ap[4]
+    def __init__(self, ap, from_django=False):
+        if not from_django:
+            self.mac = ap[0]
+            self.strength_dbm = float(ap[1])
+            self.strength = 10 ** (float(ap[1]) / 10)
+            self.std = 10 ** (float(ap[2]) / 10)
+            self.datetime = ap[3]
+            #self.sample_size = ap[4]
+        else:
+            self.mac = ap['mac_address']
+            self.strength_dbm = ap['signal_strength']
+            self.strength = 10 ** (self.strength_dbm / 10)
+            self.std = 10 ** (ap['standard_deviation'] / 10)
+            self.datetime = ap['recorded']
 
 # Location Class
 # TODO: Look into storing previous distance calculations
@@ -61,6 +60,7 @@ class Location(object):
         for mac_id in self.aps.keys():
             keys.add(mac_id)
         euc_dist = euclidean(keys, self.aps, aps)
+        self.euc_dist = euc_dist
         percent_shared = float(len([ap for ap in aps.keys() if ap in self.aps.keys()])) / len(keys)
         if percent_shared == 0:
             return float("INF")
@@ -94,9 +94,9 @@ class Location(object):
 def similarity(ap1, ap2):
     from scipy.stats import ttest_ind,norm
     return 1 - ttest_ind(
-	    norm.rvs(loc=ap1.strength,scale=ap1.std,size=ap1.sample_size),
-	    norm.rvs(loc=ap2.strength,scale=ap2.std,size=ap2.sample_size),
-	    equal_var = False)[1]
+        norm.rvs(loc=ap1.strength,scale=ap1.std,size=ap1.sample_size),
+        norm.rvs(loc=ap2.strength,scale=ap2.std,size=ap2.sample_size),
+        equal_var = False)[1]
 
 # Given a set of mac_ids and two dictionaries of AccessPoints, calculates the
 # Euclidean distance between the two dictionaries
@@ -139,14 +139,31 @@ def weighted_avg(tuples, inverse):
     return s
 
 
+def jaccardDistance(aps1, aps2):
+    count = 0
+    for ap in aps2.values():
+        if ap.mac in aps1.keys():
+            count += 1
+    intersection = count
+    union = len(aps1.keys()) + len(aps2.keys()) - count
+    return float(intersection) / union
+
+
+def realDistance(d1, d2):
+    if d1 is None or d2 is None:
+        return 0
+    return math.sqrt(pow(d1.x - d2.x, 2) + pow(d1.y - d2.y, 2))
+
 # Uses k - Nearest Neighbor technique to get the coordinates associated with
 # the given AccessPoint dictionary
-def apply_kNN(data, aps, k = 3):
+def apply_kNN(data, aps, k = 3, element = None):
     k = min(k, len(data))
     #data = sorted(data, key=lambda x: x.get_distance1(aps))
     for d in data:
         d.distance = d.get_distance1(aps)
     data = sorted(data, key=lambda x: x.distance)
+    #for d in data:
+        #print jaccardDistance(aps, d.aps), "->", d.distance, "->", realDistance(d, element)
     #TODO: Reconsider avg vs. mode
     d = Counter([loc.floor_id for loc in data[:(k * 2 - 1)]])
     floor = d.most_common(1)[0][0]
@@ -192,8 +209,6 @@ def normalize(data, aps):
     for loc in data:
         for ap in loc.aps.values():
             strengths.append(ap.strength)
-    for ap in aps.values():
-        strengths.append(ap.strength)
     mean = get_mean(strengths)
     st_dev = get_sd(strengths)
     for loc in data:
@@ -206,11 +221,20 @@ def normalize(data, aps):
         if ap.strength < MIN_DETECTED:
             MIN_DETECTED = ap.strength
 
+# SUITE OF FUNCTIONS FOR TYLER
+
+def transformAPs(aps):
+    ap_list = []
+    for ap in aps:
+       pass 
+
+
+# ENDSUITE
+
 
 
 # Returns a list of Locations and an AccessPoint dictionary
-def get_locations():
-    data = getData()
+def get_locations(data):
     locations = []
     #sys.stderr.write("LENGTH: " + str(len(data)) + "\n")
     for d in data:
@@ -222,65 +246,46 @@ def get_locations():
         locations.append((d["x"], d["y"], d["direction"], d["floor_id"], cur_aps))
     return [Location(i) for i in locations]
 
-def get_data_locations(data):
-    locations = []
-    for d in data:
-        cur_macs = d["macs"]
-        cur_rss = d["rss"]
-        cur_aps = []
-        for i in range(len(cur_macs)):
-            cur_aps.append((cur_macs[i], cur_rss[i], 0, 0))
-        locations.append((d["x"], d["y"], d["direction"], d["floor_id"], cur_aps))
-        # TODO: Maybe take away list comprehension thing
-    return [Location(i) for i in locations]
+def getData(db_cursor=None):
+    if db_cursor is None:
+        from scripts.db.db import Database
+        password = os.environ.get('SIRIUS_PASSWORD')
+        if password is None:
+            raise Exception('No database password available')
 
-def get_data2():
-    # Change this
-    data = [(1,1,3,0,[(1,-66,1,1), (2, -60, 2, 2)]),
-            (2,2,3,0,[(1,-55,1,1), (3, -45, 2, 2), (4, -55, 2, 2)]),
-            (3,3,3,0,[(1,-80,1,1), (4, -70, 2, 2)]),
-            (4,4,3,0,[(1,-55,1,1), (2, -85, 2, 2), (4, -55, 2, 2)]),
-            (5,5,3,0,[(2,-80,1,1), (4, -70, 2, 2)]),
-            (6,6,3,0,[(2,-55,1,1), (3, -55, 2, 2), (4, -55, 2, 2)]),
-            (7,7,3,0,[(3,-60,1,1), (4, -70, 2, 2)]),
-            (8,8,5,0,[(4,-50,3,3)])]
+        db = Database(password)
 
-    new_aps = [(1,-66,2,2), (2,-64,4,1)]
-
-    formatted_data = [Location(i) for i in data]
-    formatted_aps = {}
-    for ap in new_aps:
-        formatted_aps[ap[0]] = AccessPoint(ap)
-    return (formatted_data, formatted_aps)
-
-def getData():
-	cur.execute("""SELECT floor_id,marauder_accesspoint.location_id, x_coordinate, y_coordinate, direction,
+        cur = db.get_cur()
+    else:
+        cur = db_cursor
+    cur.execute("""SELECT floor_id,marauder_accesspoint.location_id, x_coordinate, y_coordinate, direction,
          array_to_string(array_agg(mac_address),',') as MAC_list,
          array_to_string(array_agg(signal_strength),',') as strength_list 
-        from marauder_accesspoint 
-        join marauder_location 
+         from marauder_accesspoint 
+         join marauder_location 
             on marauder_location.id=marauder_accesspoint.location_id
-        group by floor_id,marauder_accesspoint.location_id,x_coordinate,y_coordinate,direction""")
-	access_points = cur.fetchall()
-	res = []
-	for f in access_points:
-	    msg = {
-	        'floor_id': f[0],
-	        'location_id': f[1],
-	        'x': f[2],
-	        'y': f[3],
-	        'direction': f[4],
-	        'macs': f[5].split(','),
-	        'rss': map(float, f[6].split(','))
-	    }
-	    res.append(msg)
-	return res
+         group by floor_id,marauder_accesspoint.location_id,x_coordinate,y_coordinate,direction""")
+    access_points = cur.fetchall()
+    res = []
+    for f in access_points:
+        msg = {
+            'floor_id': f[0],
+            'location_id': f[1],
+            'x': f[2],
+            'y': f[3],
+            'direction': f[4],
+            'macs': f[5].split(','),
+            'rss': map(float, f[6].split(','))
+        }
+        res.append(msg)
+    return res
 
-def kNN(aps):
-    data = get_locations()
-    normalize(data, aps)
-    (x, y, floor) = apply_kNN(data, aps)
-    return (x, y, floor)
+def kNN(test_aps, db_cursor=None):
+    test_aps = {ap['mac_address'] : AccessPoint(ap, from_django=True) for ap in test_aps}
+    trained_data = getData(db_cursor=db_cursor)
+    locations = get_locations(trained_data)
+    normalize(trained_data, test_aps)
+    return apply_kNN(trained_data, test_aps)
 
 # BRETT NORMALIZE FUNCTION
 def normalize_all_data(data, testdata):
@@ -304,7 +309,8 @@ def normalize_all_data(data, testdata):
 
 # BRETT TEST STUFF
 def testAccuracy():
-    all_data = get_locations()
+    sql_data = getData()
+    all_data = get_locations(sql_data)
     data = [d for d in all_data if d.floor_id != 3]
     testdata = [d for d in all_data if d.floor_id == 3]
     normalize_all_data(data, testdata)
@@ -314,24 +320,21 @@ def testAccuracy():
     for i in range(len(testdata)):
         element = testdata[i]
         aps = element.aps
-        (x, y, floor)  = apply_kNN(data, aps)
+        (x, y, floor)  = apply_kNN(data, aps, element = element)
         cur_error = error(element, x, y, floor)
-        #sys.stdout.write("Real (x, y): (" + str(element.x) + ", " + str(element.y) + ")\n")
-        #sys.stdout.write("Found (x, y): (" + str(x) + ", " + str(y) + ")\n")
-        #sys.stdout.write("  Error: " + str(cur_error / 9.555) + "\n")
-        print element.x, element.y, x, y
         if cur_error == -1:
             wrong_floor_count += 1
         else:
+            #print element.x, element.y, x, y
             #For Halligan_2.png, 14.764px ~= 1 meter
             #For Halligan_1.png 9.555px ~= 1 meter
             if floor == 1: #id NOT FLOOR NUMBER!!
                 error_total += cur_error / 14.764
                 distances[min(int(cur_error / 14.764), 9)] += 1
             else:
+                print cur_error / 9.555
                 error_total += cur_error / 9.555
                 distances[min(int(cur_error / 9.555), 9)] += 1
-    return
     print "FOR " + str(len(testdata)) + " POINTS:"
     print "Incorrect Floor Count:", wrong_floor_count
     print "Avg error: " + str(float(error_total) / (len(testdata) - wrong_floor_count)) + "m"
@@ -339,7 +342,8 @@ def testAccuracy():
     print ""
 
 def getMinMax():
-    dataa = get_locations()
+    sql_data = getData()
+    dataa = get_locations(sql_data)
     normalize(dataa[:-1], dataa[-1].aps)
     minx = 100000
     maxx = 0
@@ -366,11 +370,10 @@ def error(element, x, y, floor):
     return dist
 
 def LOOCV():
-    import subprocess as sp
-    tmp = sp.call('clear', shell=True)
     print "RUNNING LOOCV TESTS"
     print ""
-    data = get_locations()
+    sql_data = getData()
+    data = get_locations(sql_data)
     data = [d for d in data if d.floor_id != 3]
     print len(data)
     normalize(data[:-1], data[-1].aps) # Hacky way to normalize all data
@@ -457,7 +460,8 @@ def wrapper():
     minAlpha = sys.maxint
     minBeta = sys.maxint
     minDleta = sys.maxint
-    data = get_locations()
+    sql_data = getData()
+    data = get_locations(sql_data)
     normalize(data[:-1], data[-1].aps) # Hacky way to normalize all data
     wrapper_data = {}
     wrapper_data["alpha"] = []
