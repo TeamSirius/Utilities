@@ -224,25 +224,6 @@ def testAccuracy():
 
     DEN_THRESHOLD = 9.555 * 20 # Number of points within 20m
 
-    # dens = []
-    for i in range(len(all_data)):
-        count = 1
-        loc1 = all_data[i]
-        for j in range(len(all_data)):
-            if i == j:
-                continue
-            loc2 = all_data[j]
-            if realDistance(loc1,loc2) < DEN_THRESHOLD:
-                count += 1
-        loc1.density = count
-    #     dens.append(count)
-    # dens_mean = float(get_mean(dens))
-    # dens_sd = float(get_sd(dens,dens_mean))
-    # n_dens = [ (x - dens_mean) / dens_sd  for x in dens ]
-    # for i in range(len(n_dens)):
-    #     n = n_dens[i]
-    #     if n <= -.5 and all_data[i].floor_id == 2:
-    #         print all_data[i].x,all_data[i].y
     data = []
     testdata = []
     for d in all_data:
@@ -250,6 +231,18 @@ def testAccuracy():
             testdata.append(d)
         else:
             data.append(d)
+
+    for i in range(len(data)):
+        count = 1
+        loc1 = data[i]
+        for j in range(len(data)):
+            if i == j:
+                continue
+            loc2 = data[j]
+            if realDistance(loc1,loc2) < DEN_THRESHOLD:
+                count += 1
+        loc1.density = count
+
     normalize_all_data(data, testdata)
     wrong_floor_count = 0
     error_total = 0
