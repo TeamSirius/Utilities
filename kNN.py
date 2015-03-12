@@ -239,7 +239,7 @@ def testAccuracy():
             if i == j:
                 continue
             loc2 = data[j]
-            if realDistance(loc1,loc2) < DEN_THRESHOLD:
+            if loc1.floor_id == loc2.floor_id and realDistance(loc1,loc2) < DEN_THRESHOLD:
                 count += 1
         loc1.density = count
 
