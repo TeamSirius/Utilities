@@ -24,7 +24,8 @@ APP = {}  # contains global information needed by tkinter functions
 NUM_POINTS = 2  # number of vertices in a rectangle
 NUM_TEST_POINTS = 20  # Number of test points we want
 NUM_CANDIDATES = 200  # Number of attempts per test point chosen
-SERVER_URL = "http://localhost:5000/"
+SERVER_URL = "http://mapbuilder.herokuapp.com/"
+FID = -1 # Floor ID
 
 
 class Point(object):
@@ -151,8 +152,7 @@ def counter():
     def c():
         x[0] += 1
         return x[0]
-    return
-
+    return c
 
 def RandomPoint():
     """ generates a Point object within the image space """
@@ -166,7 +166,8 @@ def get_floor_id(imageName):
     try:
         imagePath = os.path.join(os.getcwd(), "test_" + imageName)
         payload = {'path': "test_" + imageName}
-        r = requests.get(SERVER_URL + "floor", params=payload)
+        # r = requests.get(SERVER_URL + "floor", params=payload)
+        r = None
         found_fid = False
         fid = 1
         if r:
@@ -252,7 +253,6 @@ def draw_rectangle(rectangle, outline_color):
     APP['canvas_list'].append(new_canvas)
 
 
-
 def handle_click(click):
     """ Adds a point to the canvas; if there are enough points, allows logging """
     global APP
@@ -305,7 +305,8 @@ def done():
         draw_point(point, 'green')
         APP['buttons']['reset_btn'].pack_forget()
         if not debug:
-            point.save(fid, c)
+            global FID
+            point.save(FID, c)
 
 
 def reset():
@@ -324,11 +325,12 @@ def main(argv, debug):
         exit(1)
 
     if not debug:
-        fid = get_floor_id(argv[1])
+        global FID
+        FID = get_floor_id(argv[1])
 
     image_path = argv[1]
     initializeApp(image_path)
 
 if __name__ == '__main__':
-    debug = True
+    debug = False
     main(argv, debug)
