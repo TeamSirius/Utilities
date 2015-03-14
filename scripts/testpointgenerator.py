@@ -25,7 +25,7 @@ from server_interface import ServerInterface
 APP = {}  # contains global information needed by tkinter functions
 NUM_POINTS = 2  # number of vertices in a rectangle
 NUM_TEST_POINTS = 20  # Number of test points we want
-NUM_CANDIDATES = 500  # Number of attempts per test point chosen
+NUM_CANDIDATES = 20  # Number of attempts per test point chosen
 SERVER_URL = "http://mapbuilder.herokuapp.com/"
 FID = -1 # Floor ID
 
