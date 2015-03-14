@@ -10,23 +10,27 @@
 #           We use this utility to create random points within areas of a building we
 #           have mapped.
 
-
+import sys
 from sys import argv, stderr, exit
 from PIL import Image, ImageTk
 from random import random
 import Tkinter
 import requests
+from requests.exceptions import HTTPError
 import json
 import os
 import math
+from server_interface import ServerInterface
 
 APP = {}  # contains global information needed by tkinter functions
 NUM_POINTS = 2  # number of vertices in a rectangle
 NUM_TEST_POINTS = 20  # Number of test points we want
-NUM_CANDIDATES = 200  # Number of attempts per test point chosen
+NUM_CANDIDATES = 500  # Number of attempts per test point chosen
 SERVER_URL = "http://mapbuilder.herokuapp.com/"
 FID = -1 # Floor ID
 
+SERVER = None
+FLOOR_NAME = None
 
 class Point(object):
 
@@ -39,12 +43,24 @@ class Point(object):
     def save(self, fid, c):
         """Given a floor id and counter will create a point in the database"""
         n = c()
-        keys = ['x', 'y', 'd', 'name', 'verbose', 'floor_id']
-        data = {"x": self.x, "y": self.y, "d": 0,
-                "name": "Pt {}".format(n),
-                "verbose": "Point {}".format(n),
-                "floor_id": fid}
-        r = requests.post(SERVER_URL + "location", data=json.dumps(data))
+        name = '{} TEST: {}'.format(FLOOR_NAME, n)
+
+        data = {
+            'x_coordinate': self.x,
+            'y_coordinate': self.y,
+            'short_name': n,
+            'verbose_name': name,
+            'direction': 0,
+            'floor': FID
+        }
+
+        try:
+            SERVER.post(ServerInterface.LOCATION, data)
+            print('Saved {} at ({},{})'.format(name, self.x, self.y))
+        except HTTPError, e:
+            print >> sys.stderr, e
+            print >> sys.stderr, 'Unable to save {}'.format(name)
+
 
 class Rectangle(object):
 
@@ -160,32 +176,50 @@ def RandomPoint():
     return Point(rand(0, APP['dims']['w']), rand(0, APP['dims']['h']))
 
 
-def get_floor_id(imageName):
-    """Given an image name will return a floor id from the database. 
-        Used to save points for logging."""
+def get_floor_info(imageName):
+    """Requests a building name and floor number from the user
+    If a floor with the supplied name and number exists, get the resource ID for it
+    If it does not exists, create a new one and return its resource ID.
+    Args: 
+        imageName: A string with the location of an image for a floor
+    Returns:
+        The Resource ID for the floor and the name to use when posting new points
+    """
+
+    global SERVER
     try:
-        imagePath = os.path.join(os.getcwd(), "test_" + imageName)
-        payload = {'path': "test_" + imageName}
-        # r = requests.get(SERVER_URL + "floor", params=payload)
-        r = None
-        found_fid = False
-        fid = 1
-        if r:
-            json_r = r.json()
-            if 'error' not in json_r:
-                found_fid = True
-                fid = int(json_r['floor_id'])
-        if not found_fid:
-            payload['building'] = raw_input("Building: ")
-            payload['floor_number'] = int(raw_input("floor_number: "))
-            r = requests.post(SERVER_URL + "floor", data=json.dumps(payload))
-            json_r = r.json()
-            if 'error' in json_r:
-                raise "Server Error"
-            fid = int(json_r['floor_id'])
-    except:
+        building_name = raw_input("Building: ")
+        floor_number = raw_input("Floor Number: ")
+        building_name.replace(' ', '_')
+        combined_name = "{} {}".format(building_name, floor_number)
+        lookup_params = {
+            'building_name__iexact': building_name, # iexact to account for capitalization
+            'floor_number': floor_number
+        }
+
+        found, floor_info = SERVER.get_single_item(ServerInterface.FLOOR,
+                                                   lookup_params)
+
+        if found:
+            return floor_info['resource_uri'], combined_name
+        else:
+            with open(imageName, 'rb') as image:
+                post_payload = {
+                    'building_name': building_name,
+                    'floor_number': floor_number,
+                }
+
+                files = {
+                    'image': image
+                }
+
+                floor_info = SERVER.post_with_files(ServerInterface.FLOOR,
+                                                    post_payload,
+                                                    files)
+                return floor_info['resource_uri'], combined_name
+    except HTTPError, e:
+        print >> sys.stderr, e
         exit("Error finding floor id")
-    return fid
 
 #--------------------------------
 # TKinter Application Code Below
@@ -320,13 +354,20 @@ def reset():
 
 
 def main(argv, debug):
-    if len(argv) != 2:
-        print "Usage: python build_locations filename"
+    if len(argv) != 4:
+        print "Usage: python build_locations filename username password"
         exit(1)
 
+    filename = argv[1]
+    username = argv[2]
+    password = argv[3]
+    
     if not debug:
         global FID
-        FID = get_floor_id(argv[1])
+        global FLOOR_NAME
+        global SERVER
+        SERVER = ServerInterface(username, password)
+        FID, FLOOR_NAME = get_floor_info(filename)
 
     image_path = argv[1]
     initializeApp(image_path)
