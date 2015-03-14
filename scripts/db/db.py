@@ -6,7 +6,6 @@ SERVER_URL = "http://mapbuilder.herokuapp.com/"
 if DEBUG:
     SERVER_URL = "http://localhost:5000/"
 
-
 class Database:
     def __init__(self, password):
         self.password = password
