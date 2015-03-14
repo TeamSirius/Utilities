@@ -23,7 +23,7 @@ import math
 APP = {}  # contains global information needed by tkinter functions
 NUM_POINTS = 2  # number of vertices in a rectangle
 NUM_TEST_POINTS = 20  # Number of test points we want
-NUM_CANDIDATES = 200  # Number of attempts per test point chosen
+NUM_CANDIDATES = 10  # Number of attempts per test point chosen
 SERVER_URL = "http://localhost:5000/"
 
 
@@ -96,6 +96,7 @@ def bestCandidate(test_points):
         d = distance(findClosest(test_points, c), c)
         if d > bestDistance:
             best = c
+            bestDistance = d
     return best
 
 
