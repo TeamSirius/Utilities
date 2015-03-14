@@ -113,6 +113,7 @@ def bestCandidate(test_points):
         d = distance(findClosest(test_points, c), c)
         if d > bestDistance:
             best = c
+            bestDistance = d
     return best
 
 
