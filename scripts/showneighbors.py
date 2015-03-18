@@ -80,7 +80,7 @@ def initializeApp(image_path):
 
 def getButtons():
     """ Returns dict of buttons; will be added to app object"""
-    buttons = {'ready_btn': Tkinter.Button(APP['frame'], text="Ready!", command=ready)}
+    buttons = {'ready_btn': Tkinter.Button(APP['frame'], text="Begin", command=ready)}
     return buttons
 
 def draw_point(p, color, text=""):
@@ -91,6 +91,7 @@ def draw_point(p, color, text=""):
     new_canvas = APP['canvas'].create_oval(
         p.x - radius, p.y - radius, p.x + radius, p.y + radius, fill=color)
     if text != "":
+        APP['canvas_list'].append(new_canvas)
         new_canvas = APP['canvas'].create_text(
             p.x, p.y-15, text=str(text))
 
@@ -111,7 +112,9 @@ def ready():
 
     global REAL_POINTS, GUESS_POINTS, NEIGHBORS, INDEX
     if INDEX == 0:
+        global APP
         readPoints()
+        APP['buttons']['ready_btn']["text"] = "Next point"
     elif INDEX == len(REAL_POINTS): 
         sys.exit(0)
     else:
@@ -121,11 +124,11 @@ def ready():
             APP['points'] = []
             APP['canvas_list'] = []
 
-    draw_point(REAL_POINTS[INDEX], 'green')
+    draw_point(REAL_POINTS[INDEX], 'green', "P" + str(INDEX))
     draw_point(GUESS_POINTS[INDEX], 'red')
     draw_line(Line(REAL_POINTS[INDEX], GUESS_POINTS[INDEX]), 'blue')
     for j in range(INDEX * NUM_NEIGHBORS, INDEX * NUM_NEIGHBORS + NUM_NEIGHBORS):
-        draw_point(NEIGHBORS[j], 'purple')
+        draw_point(NEIGHBORS[j], 'purple', str(j - INDEX * NUM_NEIGHBORS + 1))
         draw_line(Line(REAL_POINTS[INDEX], NEIGHBORS[j]), 'black')
     INDEX = INDEX + 1
 
