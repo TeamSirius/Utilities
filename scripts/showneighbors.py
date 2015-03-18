@@ -145,12 +145,13 @@ def readPoints():
             NEIGHBORS.append(Point(points[0], points[1]))
 
 def main(argv):
-    if len(argv) != 3:
-        print "Usage: python testresults.py image_path point_coords"
+    if len(argv) != 4:
+        print "Usage: python testresults.py k image_path point_coords"
         exit(1)
-
-    image_path = argv[1]
-    sys.stdin = open(argv[2])
+    global NUM_NEIGHBORS
+    NUM_NEIGHBORS = int(argv[1])
+    image_path = argv[2]
+    sys.stdin = open(argv[3])
     initializeApp(image_path)
 
 if __name__ == '__main__':
