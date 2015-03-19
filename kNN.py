@@ -14,9 +14,10 @@ from math import isinf
 # CONSTANTS
 #-------------
 
-COEFF_JACCARD = 3
-COEFF_EUCLIDEAN = 1
-COEFF_DENSITY = .112
+COEFF_JACCARD = 1
+COEFF_EUCLIDEAN = 2.6
+COEFF_DENSITY = .014
+MODE = "COMBINED"
 
 # Minimum normalized RSSI value detected; used as "not detected" value
 MIN_DETECTED = 0
@@ -66,15 +67,6 @@ class Location(object):
             self.aps[ap[0]] = AccessPoint(ap)
 
 
-#-------------------
-# DEBUGGING TOOLS
-#-------------------
-
-def printToFile():
-    return
-
-
-
 #----------------------
 # DISTANCE FUNCTIONS
 #----------------------
@@ -97,8 +89,7 @@ def kNNDistance(aps1, aps2, density = 0):
     jaccard_dist = jaccard(aps1, aps2)
     if jaccard_dist == 0:
         return float("INF")
-    return (COEFF_JACCARD / jaccard_dist) + (COEFF_EUCLIDEAN * euc_dist) +\
-            (COEFF_DENSITY * density)
+    return (COEFF_JACCARD / jaccard_dist) + (COEFF_EUCLIDEAN * euc_dist) + (COEFF_DENSITY * density)
 
 def euclidean(aps1, aps2):
     """ Returns the Euclidean distance between the given AccessPoint dicts """
@@ -159,13 +150,18 @@ def weighted_avg(tuples, inverse):
             s += t[0] * t[1] / weight_sum
     return s
 
-def applykNN(data, aps, k = 4, element = None):
+def applykNN(data, aps, k, element = None):
     """ Uses kNN technique to locate the given AccessPoint dict """
     k = min(k, len(data))
     floor = getFloor(data, aps)
     for d in data:
         if d.floor_id == floor:
-            d.distance = kNNDistance(d.aps, aps, density=d.density)
+            if MODE == "JACCARD":
+                d.distance = 1 / (jaccard(d.aps, aps) + .01)
+            elif MODE == "EUCLIDEAN":
+                d.distance = euclidean(d.aps, aps)
+            else:
+                d.distance = kNNDistance(d.aps, aps, density=d.density)
         else:
             d.distance = float("INF")
     data = sorted(data, key=lambda x: x.distance)
@@ -237,7 +233,7 @@ def getData(db_cursor=None):
 
 
 #---------------------------
-# NORMALIZATION FUNCTIONS
+# COMBINEDIZATION FUNCTIONS
 #---------------------------
 
 def get_sd(l):
@@ -284,11 +280,9 @@ def normalizeAPs(aps, mean, st_dev):
 
 def error(element, x, y, floor):
     """ Returns the error between the given element and our x and y vals """
-    if element.floor_id == 7 and floor != 2:
+    if element.floor_id == 6 and floor != 5:
         return -1
-    elif element.floor_id == 15 and floor != 1:
-        return -1
-    elif element.floor_id < 3 and element.floor_id != floor:
+    elif element.floor_id < 6 and element.floor_id != floor:
         return -1
     else:
         dist = math.sqrt(pow(element.x - x, 2) + pow(element.y - y, 2))
@@ -304,14 +298,14 @@ def addDensities(data):
             if i == j or loc1.floor_id != loc2.floor_id:
                 continue
             if loc1.floor_id == 1:
-                den_threshold = 9.555 * 10
+                den_threshold = 9.555 * 20
             else:
-                den_threshold = 14.764 * 10
+                den_threshold = 14.764 * 20
             if realDistance(loc1,loc2) < den_threshold:
                 count += 1
         loc1.density = count
 
-def testAccuracy():
+def testAccuracy(error_output, guess_output, neighbor_output, k = 4):
     """ Pulls data from the database, runs kNN on each test point, and prints
     results to various files
     """
@@ -320,45 +314,84 @@ def testAccuracy():
     data = []
     testdata = []
     for d in all_data:
-        if d.floor_id < 3:
+        if d.floor_id == 4 or d.floor_id == 5:
             data.append(d)
-        else:
+        elif d.floor_id == 6:
             testdata.append(d)
     addDensities(data)
     (mean, st_dev) = normalize(data)
     wrong_floor_count = 0
-    error_total = 0
-    distances = [0] * 10 # [0-1 meter, 1-2, 2-3, etc]
+    errors = []
+    distances = [0 for i in range(10)]
+    accepted = range(len(testdata)) # Points we want to observe
+    testdata = [e for (i, e) in enumerate(testdata) if i in accepted]
     for i in range(len(testdata)):
         element = testdata[i]
         aps = element.aps
         normalizeAPs(aps, mean, st_dev)
-        (x, y, floor, neighbors)  = applykNN(data, aps, element = element)
+        (x, y, floor, neighbors)  = applykNN(data, aps, k, element = element)
         cur_error = error(element, x, y, floor)
         if cur_error == -1:
-            print "Wrong floor"
             wrong_floor_count += 1
         else:
-            print element.x, element.y, x, y
-            for n in neighbors:
-                print n.x, n.y, n.density
+            if MODE == "COMBINED":
+                guess_output.write(str(element.x) + " " +  str(element.y) + " " +\
+                        str(x) + " " + str(y) + "\n")
+                neighbor_output.write(str(element.x) + " " +  str(element.y) + " " +\
+                        str(x) + " " + str(y) + "\n")
+                for n in neighbors:
+                    neighbor_output.write(str(n.x) + " " + str(n.y) + "\n")
             #For Halligan_2.png, 14.764px ~= 1 meter
             #For Halligan_1.png 9.555px ~= 1 meter
-            if floor == 1: #id NOT FLOOR NUMBER!!
-                print i, cur_error / 14.764
-                error_total += cur_error / 14.764
-                distances[min(int(cur_error / 14.764), 9)] += 1
+            if floor == 1:
+                cur_error /= 14.764
+                error_output.write(str(cur_error) + "\n")
+                if MODE != "COMBINED" and i == len(testdata) - 1:
+                    error_output.write("\n")
+                errors.append(cur_error)
+                distances[min(int(cur_error), 9)] += 1
             else:
-            #    if cur_error / 9.555 > 9:
-            #        print i, cur_error / 9.555
-                error_total += cur_error / 9.555
-                distances[min(int(cur_error / 9.555), 9)] += 1
-    print "FOR " + str(len(testdata)) + " POINTS:"
-    print "Incorrect Floor Count:", wrong_floor_count
-    print "Avg error: " + str(float(error_total) / (len(testdata) - wrong_floor_count)) + "m"
-    print "Distances:", distances
-    print ""
-    return float(error_total) / len(testdata)
+                cur_error /= 9.555
+                error_output.write(str(cur_error) + "\n")
+                if MODE != "COMBINED" and i == len(testdata) - 1:
+                    error_output.write("\n")
+                errors.append(cur_error)
+                distances[min(int(cur_error), 9)] += 1
+    if MODE == "COMBINED":
+        print "FOR " + str(len(testdata)) + " POINTS:"
+        print "Incorrect Floor Count:", wrong_floor_count
+        print "Min error:", min(errors)
+        print "Max error:", max(errors)
+        print "Avg error: " + str(float(sum(errors)) / (len(testdata) - wrong_floor_count)) + "m"
+        print "Distances:", distances
+        print ""
+    return float(sum(errors)) / len(testdata)
 
 if __name__ == "__main__":
-    testAccuracy()
+    if len(sys.argv) < 4:
+        sys.stderr.write("Usage: python kNN.py -k K error_output " +\
+                "guess_output neighbor_output\n")
+        sys.exit(1)
+    args = sys.argv[1:]
+    k = 4
+    if args[0] == "-k":
+        k = int(args[1])
+        args = args[2:]
+    error_output = open(args[0], "w+")
+    guess_output = open(args[1], "w+")
+    neighbor_output = open(args[2], "w+")
+    for MODE in ["EUCLIDEAN", "JACCARD", "COMBINED"]:
+        testAccuracy(error_output, guess_output, neighbor_output, k)
+
+
+    """
+    best_density = 0
+    best_error = 100
+    for MODE in ["COMBINED"]:
+        for COEFF_DENSITY in [.002, .004, .005, .006, .008, .010, .012, .014, .016, .018, .020, .022]:
+            print "Const:", COEFF_DENSITY
+            cur_error = testAccuracy(error_output, guess_output, neighbor_output, k)
+            if cur_error < best_error:
+                best_error = cur_error
+                best_density = COEFF_DENSITY
+        print best_error, best_density"""

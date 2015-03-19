@@ -38,3 +38,6 @@ echo
 echo "To see neighbors on map, run:"
 echo "python scripts/showneighbors.py $k Static_Files/Halligan_1.png $neighbor_output"
 echo
+echo "To see line graph of errors, run:"
+echo "python scripts/visualizeerror.py $error_output"
+echo
