@@ -362,14 +362,14 @@ def testAccuracy(error_output, guess_output, neighbor_output, k = 4):
                     error_output.write("\n")
                 errors.append(cur_error)
                 distances[min(int(cur_error), 9)] += 1
-    if MODE == "COMBINED":
-        print "FOR " + str(len(testdata)) + " POINTS:"
-        print "Incorrect Floor Count:", wrong_floor_count
-        print "Min error:", min(errors)
-        print "Max error:", max(errors)
-        print "Avg error: " + str(float(sum(errors)) / (len(testdata) - wrong_floor_count)) + "m"
-        print "Distances:", distances
-        print ""
+    print "MODE:", MODE
+    print "FOR " + str(len(testdata)) + " POINTS:"
+    print "Incorrect Floor Count:", wrong_floor_count
+    print "Min error:", min(errors)
+    print "Max error:", max(errors)
+    print "Avg error: " + str(float(sum(errors)) / (len(testdata) - wrong_floor_count)) + "m"
+    print "Distances:", distances
+    print ""
     return float(sum(errors)) / len(testdata)
 
 if __name__ == "__main__":
