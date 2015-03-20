@@ -10,7 +10,7 @@ import math
 def showCDF(error_lists):
     """ Displays CDF of Accuracy for Various k-NN Distance Metrics """
     index = 0
-    max_bucket = int(max([math.ceil(max(errors)) for errors in error_lists]))
+    max_bucket = int(max([math.ceil(max(errors) + 2) for errors in error_lists]))
     colors = ['r', 'g', 'b']
     shapes = ['^', 'o', 'd']
     labels = ['Euclidean Distance', 'Jaccard Coefficient', 'Combined']
