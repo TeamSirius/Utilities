@@ -8,6 +8,7 @@ import math
 import sys
 import os
 from math import isinf
+from datetime import datetime
 
 
 #-------------
@@ -89,7 +90,11 @@ def kNNDistance(aps1, aps2, density = 0):
     jaccard_dist = jaccard(aps1, aps2)
     if jaccard_dist == 0:
         return float("INF")
-    return (COEFF_JACCARD / jaccard_dist) + (COEFF_EUCLIDEAN * euc_dist) + (COEFF_DENSITY * density)
+
+    rVal = (COEFF_JACCARD / jaccard_dist) + (COEFF_EUCLIDEAN * euc_dist)
+    if MODE == "COMBINED":
+        rVal += (COEFF_DENSITY * density)
+    return rVal
 
 def euclidean(aps1, aps2):
     """ Returns the Euclidean distance between the given AccessPoint dicts """
