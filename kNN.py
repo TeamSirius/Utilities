@@ -15,16 +15,18 @@ from datetime import datetime
 # CONSTANTS
 #-------------
 
-COEFF_JACCARD = 1
+COEFF_JACCARD = 1.6
 COEFF_EUCLIDEAN = 2.6
-COEFF_DENSITY = .014
+COEFF_DENSITY = .08
+PENALTY = 0.16
 MODE = "COMBINED"
 
-# Minimum normalized RSSI value detected; used as "not detected" value
-MIN_DETECTED = 0
 
 MAXINT = sys.maxint
 MININT = (MAXINT * -1) - 1
+
+# Minimum normalized RSSI value detected; used as "not detected" value
+MIN_DETECTED = MAXINT
 
 # TODO: Either incorporate this or get rid of it
 MAC_COUNTS = {}
@@ -40,7 +42,8 @@ class AccessPoint(object):
         if not from_django:
             self.mac = ap[0]
             self.strength_dbm = float(ap[1])
-            self.strength = 10 ** (float(ap[1]) / 10)
+            #self.strength = 10 ** (float(ap[1]) / 10)
+            self.strength = self.strength_dbm
             self.std = 10 ** (float(ap[2]) / 10)
             self.datetime = ap[3]
 
@@ -72,7 +75,7 @@ class Location(object):
 # DISTANCE FUNCTIONS
 #----------------------
 
-def getSharedKeys(aps1, aps2):
+def getKeySet(aps1, aps2):
     """ Returns a set of shared keys between the two given AP dictionaries """
     keys = sets.Set()
     for mac_id in aps1.keys():
@@ -96,10 +99,10 @@ def kNNDistance(aps1, aps2, density = 0):
         rVal += (COEFF_DENSITY * density)
     return rVal
 
-def euclidean(aps1, aps2):
+def euclideanOld(aps1, aps2):
     """ Returns the Euclidean distance between the given AccessPoint dicts """
     global MIN_DETECTED
-    keys = getSharedKeys(aps1, aps2)
+    keys = getKeySet(aps1, aps2)
     rVal = 0
     for key in keys:
         strength1 = MIN_DETECTED
@@ -109,6 +112,30 @@ def euclidean(aps1, aps2):
         if key in aps2:
             strength2 = aps2[key].strength
         rVal = rVal + ((strength1 - strength2) ** 2)
+    return math.sqrt(rVal)
+
+def euclidean(aps1, aps2):
+    """ Returns the Euclidean distance between the given AccessPoint dicts """
+    global MIN_DETECTED
+    global PENALTY
+    keys = getKeySet(aps1, aps2)
+    both = []
+    aps1_only = []
+    aps2_only = []
+    for key in keys:
+        if key in aps1 and key in aps2:
+            both.append(key)
+        elif key in aps1:
+            aps1_only.append(key)
+        else:
+            aps2_only.append(key)
+    rVal = 0
+    for key in both:
+        rVal += (aps1[key].strength - aps2[key].strength) ** 2
+    for key in aps1_only:
+        rVal += ((aps1[key].strength - MIN_DETECTED) ** 2) * PENALTY
+    for key in aps2_only:
+        rVal += ((MIN_DETECTED - aps2[key].strength) ** 2) * PENALTY
     return math.sqrt(rVal)
 
 def jaccard(aps1, aps2):
@@ -190,6 +217,21 @@ def getFloor(data, aps, k = 5):
 # GET DATA FUNCTIONS
 #----------------------
 
+def getData(excluded = []):
+    sql_data = getSqlData()
+    all_data = getLocations(sql_data)
+    data = []
+    testdata = []
+    for d in all_data:
+        if d.floor_id == 4 or d.floor_id == 5:
+            data.append(d)
+        elif d.floor_id == 6:
+            testdata.append(d)
+    addDensities(data)
+    (mean, st_dev) = normalize(data)
+    testdata = [e for (i, e) in enumerate(testdata) if i not in excluded]
+    return (data, testdata, mean, st_dev)
+
 def getLocations(data):
     """ Returns an array of Location objects corresponding to the given data"""
     locations = []
@@ -202,7 +244,7 @@ def getLocations(data):
         locations.append((d["x"], d["y"], d["direction"], d["floor_id"], cur_aps))
     return [Location(i) for i in locations]
 
-def getData(db_cursor=None):
+def getSqlData(db_cursor=None):
     if db_cursor is None:
         from scripts.db.db import Database
         password = os.environ.get('SIRIUS_PASSWORD')
@@ -261,6 +303,7 @@ def normalize(data):
     for loc in data:
         for ap in loc.aps.values():
             strengths.append(ap.strength)
+            # JUST ADDED
             if ap.mac not in MAC_COUNTS.keys():
                 MAC_COUNTS[ap.mac] = 0
             MAC_COUNTS[ap.mac] += 1
@@ -271,6 +314,7 @@ def normalize(data):
             ap.strength = (ap.strength - mean) / st_dev
             if ap.strength < MIN_DETECTED:
                 MIN_DETECTED = ap.strength
+    print "MIN DETECTED:", MIN_DETECTED
     return (mean, st_dev)
 
 def normalizeAPs(aps, mean, st_dev):
@@ -314,22 +358,10 @@ def testAccuracy(error_output, guess_output, neighbor_output, k = 4):
     """ Pulls data from the database, runs kNN on each test point, and prints
     results to various files
     """
-    sql_data = getData()
-    all_data = getLocations(sql_data)
-    data = []
-    testdata = []
-    for d in all_data:
-        if d.floor_id == 4 or d.floor_id == 5:
-            data.append(d)
-        elif d.floor_id == 6:
-            testdata.append(d)
-    addDensities(data)
-    (mean, st_dev) = normalize(data)
+    (data, testdata, mean, st_dev) = getData()
     wrong_floor_count = 0
     errors = []
     distances = [0 for i in range(10)]
-    accepted = range(len(testdata)) # Points we want to observe
-    testdata = [e for (i, e) in enumerate(testdata) if i in accepted]
     for i in range(len(testdata)):
         element = testdata[i]
         aps = element.aps
@@ -389,14 +421,15 @@ if __name__ == "__main__":
         testAccuracy(error_output, guess_output, neighbor_output, k)
 
 
-    """
+    '''
     best_density = 0
     best_error = 100
     for MODE in ["COMBINED"]:
-        for COEFF_DENSITY in [.002, .004, .005, .006, .008, .010, .012, .014, .016, .018, .020, .022]:
-            print "Const:", COEFF_DENSITY
+        for COEFF_DENSITY in [float(i) / 350 for i in range(15, 30)]:
+            print "DENSITY:", COEFF_DENSITY
             cur_error = testAccuracy(error_output, guess_output, neighbor_output, k)
             if cur_error < best_error:
                 best_error = cur_error
                 best_density = COEFF_DENSITY
-        print best_error, best_density"""
+        print best_error, best_density
+        '''
