@@ -314,7 +314,6 @@ def normalize(data):
             ap.strength = (ap.strength - mean) / st_dev
             if ap.strength < MIN_DETECTED:
                 MIN_DETECTED = ap.strength
-    print "MIN DETECTED:", MIN_DETECTED
     return (mean, st_dev)
 
 def normalizeAPs(aps, mean, st_dev):
@@ -364,9 +363,12 @@ def testAccuracy(error_output, guess_output, neighbor_output, k = 4):
     distances = [0 for i in range(10)]
     for i in range(len(testdata)):
         element = testdata[i]
+        dataelem = data[i]
+        data.remove(dataelem)
         aps = element.aps
         normalizeAPs(aps, mean, st_dev)
         (x, y, floor, neighbors)  = applykNN(data, aps, k, element = element)
+        data.insert(i, dataelem)
         cur_error = error(element, x, y, floor)
         if cur_error == -1:
             wrong_floor_count += 1
@@ -421,7 +423,13 @@ if __name__ == "__main__":
         testAccuracy(error_output, guess_output, neighbor_output, k)
 
 
-    '''
+    '''This code is used for LOOCV. Remember to comment out the call to normalizeAPs()
+    ### BEST VALUE: 3.95m ###
+    import copy
+    testdata = copy.deepcopy(data)'''
+
+
+    ''' This code is used for the wrapper method.
     best_density = 0
     best_error = 100
     for MODE in ["COMBINED"]:
