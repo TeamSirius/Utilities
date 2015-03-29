@@ -108,8 +108,8 @@ class Location(object):
             payload['direction'] = i * 90
             server_interface.post(ServerInterface.LOCATION, payload)
 
-class PlainPoint(object):
-    """ PlainPoint Object, for simple (x,y) """
+class Point(object):
+    """ Point Object, for simple (x,y) """
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -118,7 +118,7 @@ class PlainPoint(object):
 # Object code for TKinter drawing
 #--------------------------------
 
-class Point(object):
+class DrawPoint(object):
     """ wrapper for Points when drawing"""
     def __init__(self, point):
         self.point = point
@@ -127,43 +127,7 @@ class Point(object):
         """ Returns the point to be drawn for a point """
         return self.point
 
-class Line(object):
-    def __init__(self, point_list):
-        p1 = point_list[0]
-        p2 = point_list[1]
-        self.num_points = int(raw_input('Number of points in line: '))
-
-        self.XL = min(p1.x, p2.x)
-        self.XR = max(p1.x, p2.x)
-        self.YT = min(p1.y, p2.y)
-        self.YB = max(p1.y, p2.y)
-
-    def points(self):
-        """ Returns the points to be drawn for a line """
-        width = self.XR - self.XL
-        height = self.YB - self.YT 
-
-        if width > height: 
-            # horizontal line
-            x = self.XL
-            y = (self.YT + self.YB) // 2
-            x_step = width // (self.num_points - 1)
-            y_step = 0
-        else: 
-            # vertical line
-            x = (self.XL + self.XR) // 2
-            y = self.YT
-            x_step = 0
-            y_step = height // (self.num_points - 1)
-
-        points = []
-        for i in range(self.num_points):
-            points.append(PlainPoint(x + (i * x_step), y + (i * y_step)))
-
-        return points
-
 class Rectangle(object):
-
     def __init__(self, point_list):
         p1 = point_list[0]
         p2 = point_list[1]
@@ -174,45 +138,71 @@ class Rectangle(object):
         self.YB = max(p1.y, p2.y)
 
     def points(self):
-        """ Returns the points to be drawn for a rectangle """
-        return [PlainPoint(self.XL, self.YT),
-                PlainPoint(self.XR, self.YT),
-                PlainPoint(self.XR, self.YB),
-                PlainPoint(self.XL, self.YB),
-                PlainPoint((self.XL + self.XR) // 2, (self.YB + self.YT) // 2)]
+        """ Returns the corners of a rectangle """
+        return [Point(self.XL, self.YT),
+                Point(self.XR, self.YT),
+                Point(self.XR, self.YB),
+                Point(self.XL, self.YB)]
 
-class Grid(object):
-    def __init__(self, point_list):
-        p1 = point_list[0]
-        p2 = point_list[1]
+#--------------------------------
+# Draw Functions Below
+#--------------------------------
 
-        self.XL = min(p1.x, p2.x)
-        self.XR = max(p1.x, p2.x)
-        self.YT = min(p1.y, p2.y)
-        self.YB = max(p1.y, p2.y)
+def cornersAndCenter(rect):
+    """ Returns the points to be drawn for a rectangle """
+    return [Point(rect.XL, rect.YT),
+            Point(rect.XR, rect.YT),
+            Point(rect.XR, rect.YB),
+            Point(rect.XL, rect.YB),
+            Point((rect.XL + rect.XR) // 2, (rect.YB + rect.YT) // 2)]
 
-    def points(self):
-        """ Returns the points to be drawn for a grid """
-        width = self.XR - self.XL
-        height = self.YB - self.YT 
+def line(rect):
+    """ Returns the points to be drawn for a line """
+    num_points = int(raw_input('Number of points in line: '))
 
-        num_across = max(1, int(math.ceil(width // DENSITY)))
-        num_high = max(1, int(math.ceil(height // DENSITY)))
-        x_justification = ((width - (DENSITY * (num_across - 1))) / 2) + self.XL
-        y_justification = ((height - (DENSITY * (num_high - 1))) / 2) + self.YT
+    width = rect.XR - rect.XL
+    height = rect.YB - rect.YT 
 
-        points = []
-        for x in range(num_across):
-            for y in range(num_high):
-                x_coord = x_justification + (DENSITY * x)
-                y_coord = y_justification + (DENSITY * y)
-                points.append(PlainPoint(x_coord, y_coord))
-        return points
+    if width > height: 
+        # horizontal line
+        x = rect.XL
+        y = (rect.YT + rect.YB) // 2
+        x_step = width // (num_points - 1)
+        y_step = 0
+    else: 
+        # vertical line
+        x = (rect.XL + rect.XR) // 2
+        y = rect.YT
+        x_step = 0
+        y_step = height // (num_points - 1)
+
+    points = []
+    for i in range(num_points):
+        points.append(Point(x + (i * x_step), y + (i * y_step)))
+
+    return points
+
+def grid(rect):
+    """ Returns the points to be drawn for a grid """
+    width = rect.XR - rect.XL
+    height = rect.YB - rect.YT 
+
+    num_across = max(1, int(math.ceil(width // DENSITY)))
+    num_high = max(1, int(math.ceil(height // DENSITY)))
+    x_justification = ((width - (DENSITY * (num_across - 1))) / 2) + rect.XL
+    y_justification = ((height - (DENSITY * (num_high - 1))) / 2) + rect.YT
+
+    points = []
+    for x in range(num_across):
+        for y in range(num_high):
+            x_coord = x_justification + (DENSITY * x)
+            y_coord = y_justification + (DENSITY * y)
+            points.append(Point(x_coord, y_coord))
+    return points
 
 #--------------------------------
 # TKinter Application Code Below
 #--------------------------------
-
 
 def initializeAPP(image_path):
     """ Initializes data for app and binds tkinter buttons """
@@ -233,7 +223,8 @@ def initializeAPP(image_path):
     APP['locations'] = []
     APP['points'] = []
     APP['canvas_list'] = []
-    APP['mode'] = {'draw': Rectangle, 'vertices': 2}
+    APP['mode'] = {'type': Rectangle, 'vertices': 2}
+    APP['draw'] = cornersAndCenter
     packAndRunApp()
 
 def getButtons():
@@ -249,8 +240,10 @@ def getButtons():
 def packAndRunApp():
     """ packs tkinter interface at startup of app """
     global APP
+
     APP['frame'].pack()
     APP['canvas'].pack()
+
     APP['buttons']['point_btn'].pack(side='left')
     APP['buttons']['line_btn'].pack(side='left')
     APP['buttons']['rectangle_btn'].pack(side='left')
@@ -270,10 +263,23 @@ def draw_point(p, color):
     APP['points'].append(p)
     APP['canvas_list'].append(new_canvas)
 
+def draw_rectangle(rectangle, outline_color):
+    """ draws a rectangle at the coordinates with the specified color """
+    global APP
+
+    corners = rectangle.points()
+    p1 = corners[0]
+    p2 = corners[2]
+
+    new_canvas = APP['canvas'].create_rectangle(
+        p1.x, p1.y, p2.x, p2.y, outline=outline_color, width=2)
+
+    APP['canvas_list'].append(new_canvas)
+
 def handle_click(click):
     """ Adds a point to the canvas; if there are enough points, allows logging """
     global APP
-    point = PlainPoint(click.x, click.y)
+    point = Point(click.x, click.y)
 
     num_points = len(APP['points']) + 1
 
@@ -295,15 +301,25 @@ def log():
     # name = raw_input("Short name: ")
     # verbose = raw_input("Verbose name: ")
 
-    shape = APP['mode']['draw'](APP['points'])
+    shape = APP['mode']['type'](APP['points'])
     reset()
 
-    for p in shape.points():
-        draw_point(p, 'red')
+    if APP['mode']['type'] == Rectangle:
+        draw_rectangle(shape, 'green')
+        for p in APP['draw'](shape):
+            draw_point(p, 'green')
+    else:
+        draw_point(shape.points, 'red')
 
     # command = raw_input("Confirm Points? [Y/N]")
     command = 'Y'
     if command.upper() == 'Y':
+        reset()
+
+        draw_rectangle(shape, 'red')
+        for p in APP['draw'](shape):
+            draw_point(p, 'red')
+
         APP['locations'] += shape.points()
         APP['points'] = []
         APP['canvas_list'] = []
@@ -326,20 +342,23 @@ def reset():
 def point_mode():
     """ resets points; sets APP's draw function to point mode""" 
     global APP
-    APP['mode'] = {'draw': Point, 'vertices': 1}
+    APP['mode'] = {'type': DrawPoint, 'vertices': 1}
+    APP['draw'] = points
+    reset()
+
+def rectangle_mode():
+    """ resets points; sets APP's draw function to rectangle mode""" 
+    global APP
+    APP['mode'] = {'type': Rectangle, 'vertices': 2}
+    APP['draw'] = cornersAndCenter
     reset()
 
 def line_mode():
     """ resets points; sets APP's draw function to line mode""" 
     global APP
 
-    APP['mode'] = {'draw': Line, 'vertices': 2}
-    reset()
-
-def rectangle_mode():
-    """ resets points; sets APP's draw function to rectangle mode""" 
-    global APP
-    APP['mode'] = {'draw': Rectangle, 'vertices': 2}
+    APP['mode'] = {'type': Rectangle, 'vertices': 2}
+    APP['draw'] = line
     reset()
 
 def grid_mode():
@@ -347,7 +366,8 @@ def grid_mode():
     global APP
     global DENSITY 
 
-    APP['mode'] = {'draw': Grid, 'vertices': 2}
+    APP['mode'] = {'type': Rectangle, 'vertices': 2}
+    APP['draw'] = grid
     if DENSITY == 0:
         DENSITY = raw_input("Density: ")
     reset()
