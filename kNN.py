@@ -38,7 +38,7 @@ MAC_COUNTS = {}
 class AccessPoint(object):
     """ AccessPoint Object """
     def __init__(self, ap, from_django=False):
-
+        """Takes in tuple( MAC,strength,standard_deviation,datetime) """
         if not from_django:
             self.mac = ap[0]
             self.strength_dbm = float(ap[1])
@@ -259,9 +259,31 @@ def getSQLLocations(db_cursor):
         num_macs = len(temp_macs)
         for i in range(num_macs):
             cur_aps.append((temp_macs[i], temp_rss[i], 0, 0))
-        locations.append((ap[2], ap[3], ap[4], ap[0], cur_aps))
+        locations.append(Location((ap[2], ap[3], ap[4], ap[0], cur_aps)))
+
+    addDensities(locations)
     return locations
 
+
+def getTestPoints(db_cursor):
+    pts = {}
+    db_cursor.execute("""SELECT floor_id,marauder_accesspoint.location_id, x_coordinate, y_coordinate, direction,
+         array_to_string(array_agg(mac_address),',') as MAC_list,
+         array_to_string(array_agg(signal_strength),',') as strength_list 
+         from marauder_accesspoint 
+         join marauder_location 
+            on marauder_location.id=marauder_accesspoint.location_id
+        where floor_id = 9
+         group by floor_id,marauder_accesspoint.location_id,x_coordinate,y_coordinate,direction
+         limit 1""")
+    access_points = cur.fetchall()
+    for ap in access_points:
+        temp_macs = ap[5].split(",")
+        temp_rss = ap[6].split(",")
+        num_macs = len(temp_macs)
+        for i in range(num_macs):
+            pts[ temp_macs[i] ] = temp_rss[i]
+    return pts
 
 def getSqlData(db_cursor=None):
     if db_cursor is None:
@@ -425,22 +447,6 @@ def testAccuracy(error_output, guess_output, neighbor_output, k = 4):
     print ""
     return float(sum(errors)) / len(testdata)
 
-if __name__ == "__main__":
-    if len(sys.argv) < 4:
-        sys.stderr.write("Usage: python kNN.py -k K error_output " +\
-                "guess_output neighbor_output\n")
-        sys.exit(1)
-    args = sys.argv[1:]
-    k = 4
-    if args[0] == "-k":
-        k = int(args[1])
-        args = args[2:]
-    error_output = open(args[0], "w+")
-    guess_output = open(args[1], "w+")
-    neighbor_output = open(args[2], "w+")
-    for MODE in ["EUCLIDEAN", "JACCARD", "COMBINED"]:
-        testAccuracy(error_output, guess_output, neighbor_output, k)
-
 
     '''This code is used for LOOCV. Remember to comment out the call to normalizeAPs()
     ### BEST VALUE: 3.95m ###
@@ -467,10 +473,12 @@ if __name__ == "__main__":
 #----------------------
 
 def stringList(L):
+    return "(" + ",".join(L) +")"
+
     build_list = "("
-    length = length(L)
+    length = len(L)
     last = length - 1
-    for i in range(lenth):
+    for i in range(length):
         build_list += "\'"
         build_list += L[i]
         build_list += "\'"
@@ -480,27 +488,52 @@ def stringList(L):
     return build_list
 
 
-def kNN(db_cursor,aps):
+def kNN(db_cursor,aps_dic):
     """Takes in a database cursor and a dictionary with MAC address keys and RSS values.
         Will return a tuple of length four indicating (SUCCESS,X,Y,FLOOR_ID). In the case
         of no mac addresses being present in the database the return will be (False,None,None,None)"""
     ERROR_RETURN = (False,None,None,None) #Return in case of error
     kVal = 3 #K parameter for kNN
-    stringMacs = stringList( strengths.keys() ) #Builds postgresql list string
     # Returns a non-zero number if accesspoints are present in the database 
     # -- Returns 0 when there is no overlap
-    db_cursor.execute("""select count(*) from marauder_accesspoint where mac_address in %s""",[stringMacs])
+    db_cursor.execute("""select count(*) from marauder_accesspoint where mac_address = ANY(%s)""",[aps_dic.keys()])
     num = db_cursor.fetchone()
-    if not num or int(num) == 0:
+    if not num or int(num[0]) == 0:
         return ERROR_RETURN
     #Gets all known FP locations as Location Objects form the database
+    #   the returned Locations already have the desity calculated
     data = getSQLLocations(db_cursor)
+    #Normalizes the known data and returns the mean and std such as to normalize
+    #   the input data
+    mean,std = normalize(data)
+    #Builds Access point list from dictionary
+    """Takes in tuple( MAC,strength,standard_deviation,datetime).
+     Note, standard_deviation and datetime are not used"""
+    aps = {}
+    for mac_address, rss in aps_dic.iteritems():
+        aps[mac_address] = AccessPoint( (mac_address, rss, 0, 0) )
+    #Normalizes the input data
+    normalizeAPs(aps, mean, std)
     #Applies the kNN algorithm and returns x,y,floor
     (x, y, floor, _)  = applykNN(data, aps, kVal)
     return (True, x,y,floor)
 
 
-
+if __name__ == "__main__":
+    if len(sys.argv) < 4:
+        sys.stderr.write("Usage: python kNN.py -k K error_output " +\
+                "guess_output neighbor_output\n")
+        sys.exit(1)
+    args = sys.argv[1:]
+    k = 4
+    if args[0] == "-k":
+        k = int(args[1])
+        args = args[2:]
+    error_output = open(args[0], "w+")
+    guess_output = open(args[1], "w+")
+    neighbor_output = open(args[2], "w+")
+    for MODE in ["EUCLIDEAN", "JACCARD", "COMBINED"]:
+        testAccuracy(error_output, guess_output, neighbor_output, k)
 
 
 
