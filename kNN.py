@@ -197,9 +197,6 @@ def applykNN(data, aps, k, element = None):
         else:
             d.distance = float("INF")
     data = sorted(data, key=lambda x: x.distance)
-    #data = sorted(data, key=lambda x: realDistance(element, x))
-    #for d in data:
-    #   print jaccard(aps, d.aps), "->", euclidean(aps, d.aps), "->", kNNDistance(aps, d.aps, density=d.density), "->", d.density, "->", realDistance(d, element)
     x = weighted_avg([(loc.x, loc.distance) for loc in data[:k]], True)
     y = weighted_avg([(loc.y, loc.distance) for loc in data[:k]], True)
     return (x, y, floor, data[:k])
@@ -243,6 +240,28 @@ def getLocations(data):
             cur_aps.append((cur_macs[i], cur_rss[i], 0, 0))
         locations.append((d["x"], d["y"], d["direction"], d["floor_id"], cur_aps))
     return [Location(i) for i in locations]
+
+def getSQLLocations(db_cursor):
+    locations = []
+    db_cursor.execute("""SELECT floor_id,marauder_accesspoint.location_id, x_coordinate, y_coordinate, direction,
+         array_to_string(array_agg(mac_address),',') as MAC_list,
+         array_to_string(array_agg(signal_strength),',') as strength_list 
+         from marauder_accesspoint 
+         join marauder_location 
+            on marauder_location.id=marauder_accesspoint.location_id
+        where floor_id = 4 or floor_id =5
+         group by floor_id,marauder_accesspoint.location_id,x_coordinate,y_coordinate,direction""")
+    access_points = cur.fetchall()
+    for ap in access_points:
+        cur_aps = []
+        temp_macs = ap[5].split(",")
+        temp_rss = ap[6].split(",")
+        num_macs = len(temp_macs)
+        for i in range(num_macs):
+            cur_aps.append((temp_macs[i], temp_rss[i], 0, 0))
+        locations.append((ap[2], ap[3], ap[4], ap[0], cur_aps))
+    return locations
+
 
 def getSqlData(db_cursor=None):
     if db_cursor is None:
@@ -441,3 +460,48 @@ if __name__ == "__main__":
                 best_density = COEFF_DENSITY
         print best_error, best_density
         '''
+
+
+#----------------------
+# django code
+#----------------------
+
+def stringList(L):
+    build_list = "("
+    length = length(L)
+    last = length - 1
+    for i in range(lenth):
+        build_list += "\'"
+        build_list += L[i]
+        build_list += "\'"
+        if i != last:
+            build_list += ","
+    build_list += ")"
+    return build_list
+
+
+def kNN(db_cursor,aps):
+    """Takes in a database cursor and a dictionary with MAC address keys and RSS values.
+        Will return a tuple of length four indicating (SUCCESS,X,Y,FLOOR_ID). In the case
+        of no mac addresses being present in the database the return will be (False,None,None,None)"""
+    ERROR_RETURN = (False,None,None,None) #Return in case of error
+    kVal = 3 #K parameter for kNN
+    stringMacs = stringList( strengths.keys() ) #Builds postgresql list string
+    # Returns a non-zero number if accesspoints are present in the database 
+    # -- Returns 0 when there is no overlap
+    db_cursor.execute("""select count(*) from marauder_accesspoint where mac_address in %s""",[stringMacs])
+    num = db_cursor.fetchone()
+    if not num or int(num) == 0:
+        return ERROR_RETURN
+    #Gets all known FP locations as Location Objects form the database
+    data = getSQLLocations(db_cursor)
+    #Applies the kNN algorithm and returns x,y,floor
+    (x, y, floor, _)  = applykNN(data, aps, kVal)
+    return (True, x,y,floor)
+
+
+
+
+
+
+
