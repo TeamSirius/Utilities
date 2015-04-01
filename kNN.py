@@ -22,7 +22,7 @@ PENALTY = 0.16
 MODE = "COMBINED"
 
 
-MAXINT = sys.maxint
+MAXINT = sys.maxsize
 MININT = (MAXINT * -1) - 1
 
 # Minimum normalized RSSI value detected; used as "not detected" value
@@ -32,11 +32,14 @@ MIN_DETECTED = MAXINT
 MAC_COUNTS = {}
 
 #---------------------
-# CLASS DEFINITIONS 
+# CLASS DEFINITIONS
 #---------------------
 
+
 class AccessPoint(object):
+
     """ AccessPoint Object """
+
     def __init__(self, ap, from_django=False):
         """Takes in tuple( MAC,strength,standard_deviation,datetime) """
         if not from_django:
@@ -54,8 +57,11 @@ class AccessPoint(object):
             self.std = 10 ** (ap['standard_deviation'] / 10)
             self.datetime = ap['recorded']
 
+
 class Location(object):
+
     """ Location Object """
+
     def __init__(self, loc):
         self.x = loc[0]
         self.y = loc[1]
@@ -84,7 +90,8 @@ def getKeySet(aps1, aps2):
         keys.add(mac_id)
     return keys
 
-def kNNDistance(aps1, aps2, density = 0):
+
+def kNNDistance(aps1, aps2, density=0):
     """ Returns distance between the given AccessPoint dicts.
     Takes Jaccard coefficient, Euclidean distance, and density into account.
     """
@@ -98,6 +105,7 @@ def kNNDistance(aps1, aps2, density = 0):
     if MODE == "COMBINED":
         rVal += (COEFF_DENSITY * density)
     return rVal
+
 
 def euclideanOld(aps1, aps2):
     """ Returns the Euclidean distance between the given AccessPoint dicts """
@@ -113,6 +121,7 @@ def euclideanOld(aps1, aps2):
             strength2 = aps2[key].strength
         rVal = rVal + ((strength1 - strength2) ** 2)
     return math.sqrt(rVal)
+
 
 def euclidean(aps1, aps2):
     """ Returns the Euclidean distance between the given AccessPoint dicts """
@@ -137,6 +146,7 @@ def euclidean(aps1, aps2):
     for key in aps2_only:
         rVal += ((MIN_DETECTED - aps2[key].strength) ** 2) * PENALTY
     return math.sqrt(rVal)
+
 
 def jaccard(aps1, aps2):
     """ Returns the Jaccard coeff between the given AccessPoint dicts """
@@ -182,7 +192,8 @@ def weighted_avg(tuples, inverse):
             s += t[0] * t[1] / weight_sum
     return s
 
-def applykNN(data, aps, k, element = None):
+
+def applykNN(data, aps, k, element=None):
     """ Uses kNN technique to locate the given AccessPoint dict """
     k = min(k, len(data))
     floor = getFloor(data, aps)
@@ -201,7 +212,8 @@ def applykNN(data, aps, k, element = None):
     y = weighted_avg([(loc.y, loc.distance) for loc in data[:k]], True)
     return (x, y, floor, data[:k])
 
-def getFloor(data, aps, k = 5):
+
+def getFloor(data, aps, k=5):
     """ Uses kNN technique to find the floor of the given AccessPoint dict """
     k = min(k, len(data))
     data = sorted(data, key=lambda d: jaccard(d.aps, aps), reverse=True)
@@ -214,7 +226,7 @@ def getFloor(data, aps, k = 5):
 # GET DATA FUNCTIONS
 #----------------------
 
-def getData(excluded = []):
+def getData(excluded=[]):
     sql_data = getSqlData()
     all_data = getLocations(sql_data)
     data = []
@@ -229,6 +241,7 @@ def getData(excluded = []):
     testdata = [e for (i, e) in enumerate(testdata) if i not in excluded]
     return (data, testdata, mean, st_dev)
 
+
 def getLocations(data):
     """ Returns an array of Location objects corresponding to the given data"""
     locations = []
@@ -238,16 +251,23 @@ def getLocations(data):
         cur_aps = []
         for i in range(len(cur_macs)):
             cur_aps.append((cur_macs[i], cur_rss[i], 0, 0))
-        locations.append((d["x"], d["y"], d["direction"], d["floor_id"], cur_aps))
+        locations.append(
+            (d["x"],
+             d["y"],
+                d["direction"],
+                d["floor_id"],
+                cur_aps))
     return [Location(i) for i in locations]
+
 
 def getSQLLocations(db_cursor):
     locations = []
-    db_cursor.execute("""SELECT floor_id,marauder_accesspoint.location_id, x_coordinate, y_coordinate, direction,
+    db_cursor.execute(
+        """SELECT floor_id,marauder_accesspoint.location_id, x_coordinate, y_coordinate, direction,
          array_to_string(array_agg(mac_address),',') as MAC_list,
-         array_to_string(array_agg(signal_strength),',') as strength_list 
-         from marauder_accesspoint 
-         join marauder_location 
+         array_to_string(array_agg(signal_strength),',') as strength_list
+         from marauder_accesspoint
+         join marauder_location
             on marauder_location.id=marauder_accesspoint.location_id
         where floor_id = 4 or floor_id =5
          group by floor_id,marauder_accesspoint.location_id,x_coordinate,y_coordinate,direction""")
@@ -267,11 +287,12 @@ def getSQLLocations(db_cursor):
 
 def getTestPoints(db_cursor):
     pts = {}
-    db_cursor.execute("""SELECT floor_id,marauder_accesspoint.location_id, x_coordinate, y_coordinate, direction,
+    db_cursor.execute(
+        """SELECT floor_id,marauder_accesspoint.location_id, x_coordinate, y_coordinate, direction,
          array_to_string(array_agg(mac_address),',') as MAC_list,
-         array_to_string(array_agg(signal_strength),',') as strength_list 
-         from marauder_accesspoint 
-         join marauder_location 
+         array_to_string(array_agg(signal_strength),',') as strength_list
+         from marauder_accesspoint
+         join marauder_location
             on marauder_location.id=marauder_accesspoint.location_id
         where floor_id = 9
          group by floor_id,marauder_accesspoint.location_id,x_coordinate,y_coordinate,direction
@@ -282,8 +303,9 @@ def getTestPoints(db_cursor):
         temp_rss = ap[6].split(",")
         num_macs = len(temp_macs)
         for i in range(num_macs):
-            pts[ temp_macs[i] ] = temp_rss[i]
+            pts[temp_macs[i]] = temp_rss[i]
     return pts
+
 
 def getSqlData(db_cursor=None):
     if db_cursor is None:
@@ -297,11 +319,12 @@ def getSqlData(db_cursor=None):
         cur = db.get_cur()
     else:
         cur = db_cursor
-    cur.execute("""SELECT floor_id,marauder_accesspoint.location_id, x_coordinate, y_coordinate, direction,
+    cur.execute(
+        """SELECT floor_id,marauder_accesspoint.location_id, x_coordinate, y_coordinate, direction,
          array_to_string(array_agg(mac_address),',') as MAC_list,
-         array_to_string(array_agg(signal_strength),',') as strength_list 
-         from marauder_accesspoint 
-         join marauder_location 
+         array_to_string(array_agg(signal_strength),',') as strength_list
+         from marauder_accesspoint
+         join marauder_location
             on marauder_location.id=marauder_accesspoint.location_id
          group by floor_id,marauder_accesspoint.location_id,x_coordinate,y_coordinate,direction""")
     access_points = cur.fetchall()
@@ -332,14 +355,16 @@ def get_sd(l):
         rVal += (elem - mean) ** 2
     return (rVal / (len(l) - 1)) ** .5
 
+
 def get_mean(l):
     """ Returns the mean of the given list """
     return sum(l) / len(l)
 
+
 def normalize(data):
     """ Normalizes the given data and returns the mean and standard dev """
     global MIN_DETECTED
-    global MAC_COUNTS # TODO: Get rid of this if we don't incorporate it
+    global MAC_COUNTS  # TODO: Get rid of this if we don't incorporate it
     strengths = []
     for loc in data:
         for ap in loc.aps.values():
@@ -356,6 +381,7 @@ def normalize(data):
             if ap.strength < MIN_DETECTED:
                 MIN_DETECTED = ap.strength
     return (mean, st_dev)
+
 
 def normalizeAPs(aps, mean, st_dev):
     """ Normalizes the given AccessPoint dict """
@@ -377,6 +403,7 @@ def error(element, x, y, floor):
         dist = math.sqrt(pow(element.x - x, 2) + pow(element.y - y, 2))
     return dist
 
+
 def addDensities(data):
     """ Adds the density of points around each Location as a Location member """
     for i in range(len(data)):
@@ -390,11 +417,12 @@ def addDensities(data):
                 den_threshold = 9.555 * 20
             else:
                 den_threshold = 14.764 * 20
-            if realDistance(loc1,loc2) < den_threshold:
+            if realDistance(loc1, loc2) < den_threshold:
                 count += 1
         loc1.density = count
 
-def testAccuracy(error_output, guess_output, neighbor_output, k = 4):
+
+def testAccuracy(error_output, guess_output, neighbor_output, k=4):
     """ Pulls data from the database, runs kNN on each test point, and prints
     results to various files
     """
@@ -408,21 +436,22 @@ def testAccuracy(error_output, guess_output, neighbor_output, k = 4):
         data.remove(dataelem)
         aps = element.aps
         normalizeAPs(aps, mean, st_dev)
-        (x, y, floor, neighbors)  = applykNN(data, aps, k, element = element)
+        (x, y, floor, neighbors) = applykNN(data, aps, k, element=element)
         data.insert(i, dataelem)
         cur_error = error(element, x, y, floor)
         if cur_error == -1:
             wrong_floor_count += 1
         else:
             if MODE == "COMBINED":
-                guess_output.write(str(element.x) + " " +  str(element.y) + " " +\
-                        str(x) + " " + str(y) + "\n")
-                neighbor_output.write(str(element.x) + " " +  str(element.y) + " " +\
-                        str(x) + " " + str(y) + "\n")
+                guess_output.write(str(element.x) + " " + str(element.y) + " " +
+                                   str(x) + " " + str(y) + "\n")
+                neighbor_output.write(
+                    str(element.x) + " " + str(element.y) + " " + str(x) + " " +
+                    str(y) + "\n")
                 for n in neighbors:
                     neighbor_output.write(str(n.x) + " " + str(n.y) + "\n")
-            #For Halligan_2.png, 14.764px ~= 1 meter
-            #For Halligan_1.png 9.555px ~= 1 meter
+            # For Halligan_2.png, 14.764px ~= 1 meter
+            # For Halligan_1.png 9.555px ~= 1 meter
             if floor == 1:
                 cur_error /= 14.764
                 error_output.write(str(cur_error) + "\n")
@@ -447,12 +476,10 @@ def testAccuracy(error_output, guess_output, neighbor_output, k = 4):
     print ""
     return float(sum(errors)) / len(testdata)
 
-
     '''This code is used for LOOCV. Remember to comment out the call to normalizeAPs()
     ### BEST VALUE: 3.95m ###
     import copy
     testdata = copy.deepcopy(data)'''
-
 
     ''' This code is used for the wrapper method.
     best_density = 0
@@ -473,7 +500,7 @@ def testAccuracy(error_output, guess_output, neighbor_output, k = 4):
 #----------------------
 
 def stringList(L):
-    return "(" + ",".join(L) +")"
+    return "(" + ",".join(L) + ")"
 
     build_list = "("
     length = len(L)
@@ -488,41 +515,44 @@ def stringList(L):
     return build_list
 
 
-def kNN(db_cursor,aps_dic):
+def kNN(db_cursor, aps_dic):
     """Takes in a database cursor and a dictionary with MAC address keys and RSS values.
         Will return a tuple of length four indicating (SUCCESS,X,Y,FLOOR_ID). In the case
         of no mac addresses being present in the database the return will be (False,None,None,None)"""
-    ERROR_RETURN = (False,None,None,None) #Return in case of error
-    kVal = 3 #K parameter for kNN
-    # Returns a non-zero number if accesspoints are present in the database 
+    ERROR_RETURN = (False, None, None, None)  # Return in case of error
+    kVal = 3  # K parameter for kNN
+    # Returns a non-zero number if accesspoints are present in the database
     # -- Returns 0 when there is no overlap
-    db_cursor.execute("""select count(*) from marauder_accesspoint where mac_address = ANY(%s)""",[aps_dic.keys()])
+    db_cursor.execute(
+        """select count(*) from marauder_accesspoint where mac_address = ANY(%s)""",
+        [aps_dic.keys()])
     num = db_cursor.fetchone()
     if not num or int(num[0]) == 0:
         return ERROR_RETURN
-    #Gets all known FP locations as Location Objects form the database
+    # Gets all known FP locations as Location Objects form the database
     #   the returned Locations already have the desity calculated
     data = getSQLLocations(db_cursor)
-    #Normalizes the known data and returns the mean and std such as to normalize
+    # Normalizes the known data and returns the mean and std such as to normalize
     #   the input data
-    mean,std = normalize(data)
-    #Builds Access point list from dictionary
-    """Takes in tuple( MAC,strength,standard_deviation,datetime).
-     Note, standard_deviation and datetime are not used"""
+    mean, std = normalize(data)
+    # Builds Access point list from dictionary
     aps = {}
     for mac_address, rss in aps_dic.iteritems():
-        aps[mac_address] = AccessPoint( (mac_address, rss, 0, 0) )
-    #Normalizes the input data
+        # Takes in tuple( MAC,strength,standard_deviation,datetime).
+        # NOTE: standard_deviation and datetime are not used"""
+        aps[mac_address] = AccessPoint((mac_address, rss, 0, 0))
+
+    # Normalizes the input data
     normalizeAPs(aps, mean, std)
-    #Applies the kNN algorithm and returns x,y,floor
-    (x, y, floor, _)  = applykNN(data, aps, kVal)
-    return (True, x,y,floor)
+    # Applies the kNN algorithm and returns x,y,floor
+    (x, y, floor_id, _) = applykNN(data, aps, kVal)
+    return (True, x, y, floor_id)
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 4:
-        sys.stderr.write("Usage: python kNN.py -k K error_output " +\
-                "guess_output neighbor_output\n")
+        sys.stderr.write("Usage: python kNN.py -k K error_output " +
+                         "guess_output neighbor_output\n")
         sys.exit(1)
     args = sys.argv[1:]
     k = 4
@@ -534,7 +564,3 @@ if __name__ == "__main__":
     neighbor_output = open(args[2], "w+")
     for MODE in ["EUCLIDEAN", "JACCARD", "COMBINED"]:
         testAccuracy(error_output, guess_output, neighbor_output, k)
-
-
-
-
